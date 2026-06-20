@@ -68,7 +68,4 @@ writeFileSync('apps/iconsdemo/res/disc.ico', ico32(disc(245, 200, 30)));
 writeFileSync('apps/iconsdemo/res/diamond.ico', ico32(diamond(220, 40, 40)));
 writeFileSync('apps/iconsdemo/res/ring.ico', ico32(ring(40, 170, 70)));
 writeFileSync('apps/iconsdemo/res/smiley.bmp', bmp24(smiley()));
-writeFileSync('apps/minesweeper/mine.ico', ico32(mine()));        // иконка для minesweeper.wasm
-writeFileSync('apps/hello/app.ico', ico32(appwin()));            // иконка для hello.wasm
-writeFileSync('apps/cmd/term.ico', ico32(term()));               // иконка для cmd.wasm
-console.log('gen-icons: wrote iconsdemo res + minesweeper/mine.ico + hello/app.ico');
+console.log('gen-icons: wrote iconsdemo res (.ico/.bmp)');

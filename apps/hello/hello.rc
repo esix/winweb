@@ -1,2 +1,0 @@
-// hello.rc — иконка приложения, вшивается в hello.wasm.
-1 ICON "app.ico"

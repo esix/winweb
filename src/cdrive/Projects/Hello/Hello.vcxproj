@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Visual Studio project (подмножество): build-cdrive.mjs читает ProjectName,
+     ConfigurationType (Application=GUI), ClCompile/ResourceCompile и собирает lcc-wasm. -->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectName>Hello</ProjectName>
+    <ConfigurationType>Application</ConfigurationType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="hello.c" />
+  </ItemGroup>
+</Project>

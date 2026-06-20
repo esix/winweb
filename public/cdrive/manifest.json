@@ -1,5 +1,5 @@
 {
-  "version": 28,
+  "version": 29,
   "entries": [
     { "path": "C:", "type": "dir" },
     { "path": "C:\\Windows", "type": "dir" },
@@ -10,7 +10,6 @@
     { "path": "C:\\Projects\\Hello", "type": "dir" },
     { "path": "C:\\Projects\\Hello\\hello.c", "type": "file",
       "text": "#include <windows.h>\r\n\r\nLRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l);\r\n\r\nint WINAPI WinMain(HINSTANCE hi, HINSTANCE hp, PSTR cmd, int show) {\r\n    static TCHAR cls[] = TEXT(\"Hello\");\r\n    WNDCLASS wc = {0};\r\n    wc.lpfnWndProc   = WndProc;\r\n    wc.hInstance     = hi;\r\n    wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);\r\n    wc.lpszClassName = cls;\r\n    RegisterClass(&wc);\r\n    HWND h = CreateWindow(cls, TEXT(\"Hello\"), WS_OVERLAPPEDWINDOW,\r\n        CW_USEDEFAULT, CW_USEDEFAULT, 320, 200, NULL, NULL, hi, NULL);\r\n    ShowWindow(h, show); UpdateWindow(h);\r\n    MSG msg;\r\n    while (GetMessage(&msg, NULL, 0, 0)) { TranslateMessage(&msg); DispatchMessage(&msg); }\r\n    return 0;\r\n}\r\n\r\nLRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {\r\n    HDC hdc; PAINTSTRUCT ps; RECT rc;\r\n    switch (m) {\r\n    case WM_PAINT:\r\n        hdc = BeginPaint(h, &ps); GetClientRect(h, &rc);\r\n        TextOut(hdc, 20, 20, TEXT(\"Hello, winweb!\"), 14);\r\n        EndPaint(h, &ps); return 0;\r\n    case WM_DESTROY: PostQuitMessage(0); return 0;\r\n    }\r\n    return DefWindowProc(h, m, w, l);\r\n}" },
-    { "path": "C:\\Projects\\Hello\\hello.wasm", "type": "file", "url": "/cdrive/files/hello.wasm", "exec": true },
     { "path": "C:\\Projects\\readme.txt", "type": "file",
       "text": "C:\\Projects  -  your sources and executables.\r\n\r\nOpen a .c file in Notepad, or run a .wasm executable.\r\nCompile a console C program with:  cc demo.c" },
     { "path": "C:\\Projects\\demo.c", "type": "file",
@@ -21,10 +20,14 @@
       "text": "/* winpaint.c - drag-to-draw Win32 paint, compiled in-browser by lcc-wasm:  cc winpaint.c\n   Hold the left button and drag (WM_MOUSEMOVE + MK_LBUTTON) to paint. Strict C89. */\n#include <windows.h>\nvoid dot(HWND hwnd, int x, int y){\n  HDC hdc; int c; HBRUSH br; HPEN pen;\n  hdc = GetDC(hwnd);\n  c = RGB((x*3)&255, (y*3)&255, 170);\n  br = CreateSolidBrush(c);\n  pen = CreatePen(PS_SOLID, 1, c);\n  SelectObject(hdc, br); SelectObject(hdc, pen);\n  Ellipse(hdc, x-7, y-7, x+7, y+7);\n  DeleteObject(br); DeleteObject(pen);\n  ReleaseDC(hwnd, hdc);\n}\nint WndProc(HWND hwnd, int msg, int wp, int lp){\n  PAINTSTRUCT ps;\n  HDC hdc;\n  if(msg == WM_PAINT){\n    hdc = BeginPaint(hwnd, &ps);\n    SetBkMode(hdc, TRANSPARENT);\n    TextOut(hdc, 12, 8, \"Hold and drag to draw! (lcc)\", 28);\n    EndPaint(hwnd, &ps);\n    return 0;\n  }\n  if(msg == WM_LBUTTONDOWN || (msg == WM_MOUSEMOVE && (wp & MK_LBUTTON))){\n    dot(hwnd, lp & 65535, (lp >> 16) & 65535);\n    return 0;\n  }\n  return DefWindowProc(hwnd, msg, wp, lp);\n}\nint main(void){\n  WNDCLASS wc;\n  HWND hwnd;\n  MSG msg;\n  wc.lpfnWndProc = WndProc;\n  wc.lpszClassName = \"Paint\";\n  RegisterClass(&wc);\n  hwnd = CreateWindow(\"Paint\", \"lcc Paint - drag to draw\", 0, 120, 90, 440, 320, 0, 0, 0, 0);\n  ShowWindow(hwnd, 1); UpdateWindow(hwnd);\n  while(GetMessage(&msg, 0, 0, 0)){ TranslateMessage(&msg); DispatchMessage(&msg); }\n  return 0;\n}" },
     { "path": "C:\\Projects\\winmine.exe", "type": "file", "url": "/cdrive/files/winmine.exe", "exec": true },
 
+    { "path": "C:\\Program Files", "type": "dir" },
+    { "path": "C:\\Program Files\\Hello", "type": "dir" },
+    { "path": "C:\\Program Files\\Hello\\Hello.wasm", "type": "file", "url": "/cdrive/Program%20Files/Hello/Hello.wasm", "exec": true },
+
     { "path": "C:\\Windows\\Desktop", "type": "dir" },
     { "path": "C:\\Windows\\Desktop\\My Computer.lnk", "type": "file", "text": "target=C:\nicon=🖥️" },
     { "path": "C:\\Windows\\Desktop\\Minesweeper.lnk", "type": "file", "text": "target=app:minesweeper\nicon=💣" },
-    { "path": "C:\\Windows\\Desktop\\Hello.lnk", "type": "file", "text": "target=C:\\Projects\\Hello\\hello.wasm\nicon=🧩" },
+    { "path": "C:\\Windows\\Desktop\\Hello.lnk", "type": "file", "text": "target=C:\\Program Files\\Hello\\Hello.wasm\nicon=🧩" },
     { "path": "C:\\Windows\\Desktop\\hello.c.lnk", "type": "file", "text": "target=C:\\Projects\\Hello\\hello.c\nicon=📄" },
     { "path": "C:\\Windows\\Desktop\\Icons Demo.lnk", "type": "file", "text": "target=app:iconsdemo\nicon=🖼️" },
     { "path": "C:\\Windows\\Desktop\\Command Prompt.lnk", "type": "file", "text": "target=app:cmd\nicon=⬛" },
@@ -33,7 +36,7 @@
     { "path": "C:\\Windows\\Start Menu\\Programs", "type": "dir" },
     { "path": "C:\\Windows\\Start Menu\\Programs\\Minesweeper.lnk", "type": "file", "text": "target=app:minesweeper\nicon=🎮" },
     { "path": "C:\\Windows\\Start Menu\\Programs\\Notepad.lnk", "type": "file", "text": "target=C:\\Projects\\readme.txt\nicon=📝" },
-    { "path": "C:\\Windows\\Start Menu\\Programs\\Hello (DLL).lnk", "type": "file", "text": "target=C:\\Projects\\Hello\\hello.wasm\nicon=🧩" },
+    { "path": "C:\\Windows\\Start Menu\\Programs\\Hello (DLL).lnk", "type": "file", "text": "target=C:\\Program Files\\Hello\\Hello.wasm\nicon=🧩" },
     { "path": "C:\\Windows\\Start Menu\\Programs\\Explorer.lnk", "type": "file", "text": "target=C:\nicon=🗂" },
     { "path": "C:\\Windows\\Start Menu\\Programs\\Icons Demo.lnk", "type": "file", "text": "target=app:iconsdemo\nicon=🖼️" },
     { "path": "C:\\Windows\\Start Menu\\Programs\\Command Prompt.lnk", "type": "file", "text": "target=app:cmd\nicon=⬛" }

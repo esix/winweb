@@ -9,7 +9,8 @@ node scripts/gen-icons.mjs
 node scripts/build-rc.mjs apps/iconsdemo/iconsdemo.rc apps/iconsdemo/iconsdemo_res.c
 
 # GUI-приложения как standalone lcc-wasm модули
-node tools/lcc/build-app.mjs                       # hello, notepad, iconsdemo
+node scripts/build-cdrive.mjs                      # src/cdrive/Projects/*.vcxproj -> Program Files (Hello)
+node tools/lcc/build-app.mjs                       # notepad, iconsdemo
 node tools/lcc/build-minesweeper.mjs               # minesweeper (амальгама 4 файлов + libc)
 
 # cmd-оболочка

@@ -22,7 +22,6 @@ const BUILD = join(HERE, '.app-build');
 
 /* приложения (descriptor временный — позже перейдём на .vcxproj в src/cdrive/Projects). */
 const APPS = {
-  hello: { sources: ['apps/hello/hello.c'], libc: true, out: 'public/cdrive/files/hello.wasm' },
   notepad: { sources: ['apps/notepad/notepad.c'], libc: true, out: 'public/lcc/notepad.wasm' },
   iconsdemo: { sources: ['apps/iconsdemo/iconsdemo.c', 'apps/iconsdemo/iconsdemo_res.c'], libc: true, out: 'public/lcc/iconsdemo.wasm' },
 };
