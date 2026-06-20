@@ -1,0 +1,2 @@
+// minesweeper.rc — иконка приложения (как в настоящем сапёре), вшивается в minesweeper.wasm.
+1 ICON "mine.ico"

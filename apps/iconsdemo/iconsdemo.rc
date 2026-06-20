@@ -1,0 +1,7 @@
+// iconsdemo.rc — ресурсы как в настоящем Win32-приложении (стандартный синтаксис .rc).
+// rc.exe вшил бы их в .exe; у нас scripts/build-rc.mjs вшивает байты в .wasm,
+// а LoadIcon/LoadBitmap достают по id. Код приложения — обычный Win32, без правок.
+1  ICON   "res/disc.ico"
+2  ICON   "res/diamond.ico"
+3  ICON   "res/ring.ico"
+10 BITMAP "res/smiley.bmp"
