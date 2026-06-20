@@ -9,3 +9,22 @@ int snprintf(char *out, unsigned long n, const char *fmt, ...) {
     va_end(ap);
     return r;
 }
+
+static int lc_(int c) { return (c >= 'A' && c <= 'Z') ? c + 32 : c; }
+int strcasecmp(const char *a, const char *b) {
+    int ca, cb;
+    for (;;) {
+        ca = lc_((unsigned char)*a++); cb = lc_((unsigned char)*b++);
+        if (ca != cb) return ca - cb;
+        if (!ca) return 0;
+    }
+}
+int strncasecmp(const char *a, const char *b, unsigned long n) {
+    int ca, cb;
+    while (n--) {
+        ca = lc_((unsigned char)*a++); cb = lc_((unsigned char)*b++);
+        if (ca != cb) return ca - cb;
+        if (!ca) return 0;
+    }
+    return 0;
+}

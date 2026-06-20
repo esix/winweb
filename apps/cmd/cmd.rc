@@ -1,2 +1,0 @@
-// cmd.rc — иконка консоли, вшивается в cmd.wasm.
-1 ICON "term.ico"

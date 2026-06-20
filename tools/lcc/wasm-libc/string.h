@@ -13,4 +13,6 @@ char *strncpy(char *, const char *, size_t);
 char *strcat(char *, const char *);
 char *strchr(const char *, int);
 char *strrchr(const char *, int);
+int   strcasecmp(const char *, const char *);              /* реализованы в libc-extra.c */
+int   strncasecmp(const char *, const char *, size_t);
 #endif

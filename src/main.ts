@@ -138,7 +138,7 @@ async function launchIconsdemo(): Promise<void> {
 /* запуск цели ярлыка: app:* -> встроенный, папка -> Проводник, иначе -> openEntry (.wasm/файл) */
 /* cmd, скомпилированный lcc-wasm (standalone, без emscripten) */
 async function launchCmd(): Promise<void> {
-  const bytes = await (await fetch(`/lcc/cmd_lcc.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
+  const bytes = await (await fetch(`/cdrive/Program%20Files/cmd/cmd.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
   await launchLccCmd(wm, host, vfs, bytes, {
     launch: (p) => { void launchTarget(p); },
     cc: (p, con) => (host as unknown as { ccStart: (path: string, c: number) => void }).ccStart(p, con),
