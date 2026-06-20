@@ -11,6 +11,7 @@
 import type { WindowManager } from '../wm/window-manager';
 import type { WinwebHost } from './host';
 import type { Vfs } from '../fs/vfs';
+import { stubEnv } from './wasm-env';
 
 interface Snapshot {
   dirs: Map<string, { name: string; path: string; type: 'dir' | 'file'; size: number }[]>;
@@ -58,7 +59,7 @@ export interface LccCmdHooks {
   cc: (path: string, conId: number) => void;    // компиляция+запуск C (async, вывод в консоль)
 }
 
-export async function launchLccCmd(wm: WindowManager, host: WinwebHost, vfs: Vfs, wasmBytes: BufferSource, hooks: LccCmdHooks): Promise<void> {
+export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vfs, wasmBytes: BufferSource, hooks: LccCmdHooks): Promise<void> {
   const conId = host.conOpen();
   let mem!: WebAssembly.Memory;
   let snap: Snapshot = { dirs: new Map(), texts: new Map(), all: new Map() };
@@ -89,7 +90,7 @@ export async function launchLccCmd(wm: WindowManager, host: WinwebHost, vfs: Vfs
     winweb_cc: (pathPtr: number, con: number) => { hooks.cc(rd(pathPtr), con); return 0; },
   };
 
-  const { instance } = await WebAssembly.instantiate(wasmBytes, { env });
+  const { instance } = await WebAssembly.instantiate(wasmBytes, { env: stubEnv(env) });
   const ex = instance.exports as Record<string, CallableFunction> & { memory: WebAssembly.Memory };
   mem = ex.memory;
 

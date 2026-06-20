@@ -8,6 +8,7 @@
  * cpp = наш TS-препроцессор; rcc.wasm запускается тем же MEMFS-хостом.
  */
 import { preprocess } from './cpp';
+import { stubEnv } from '../win32/wasm-env';
 import windowsH from '../../tools/lcc/include/windows.h?raw';
 import stringH from '../../tools/lcc/include/string.h?raw';
 import guiWindowsH from '../../tools/lcc/include-gui/windows.h?raw';
@@ -43,7 +44,7 @@ function runRcc(bytes: ArrayBuffer, source: string): { wasm: Uint8Array; stderr:
     __write: (fd: number, ptr: number, len: number) => { const b = new Uint8Array(mem.buffer, ptr, len); for (let i = 0; i < len; i++) (fd === 1 ? out : err).push(b[i]); return len; },
     __exit: (code: number) => { throw { __exit: code }; },
   };
-  const inst = new WebAssembly.Instance(new WebAssembly.Module(bytes), { env: new Proxy(env, { get: (t, k) => (k in t ? t[k] : () => 0) }) });
+  const inst = new WebAssembly.Instance(new WebAssembly.Module(bytes as BufferSource), { env: stubEnv(env) });
   mem = (inst.exports as { memory: WebAssembly.Memory }).memory;
 
   const argv = ['rcc', '-target=wasm-bin'];
@@ -99,7 +100,7 @@ export function runConsole(wasm: Uint8Array, write: (s: string) => void): number
     __write: (fd: number, ptr: number, len: number) => { const b = new Uint8Array(mem.buffer, ptr, len); let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(b[i]); write(fd === 2 ? s : s.replace(/\r?\n/g, '\r\n')); return len; },
     __exit: (c: number) => { throw { __exit: c }; },
   };
-  const inst = new WebAssembly.Instance(new WebAssembly.Module(wasm), { env: new Proxy(env, { get: (t, k) => (k in t ? t[k] : () => 0) }) });
+  const inst = new WebAssembly.Instance(new WebAssembly.Module(wasm as BufferSource), { env: stubEnv(env) });
   mem = (inst.exports as { memory: WebAssembly.Memory }).memory;
   try { return ((inst.exports as { main: CallableFunction }).main() as number) | 0; }
   catch (e) { if ((e as { __exit?: number }).__exit === undefined) throw e; return (e as { __exit: number }).__exit; }

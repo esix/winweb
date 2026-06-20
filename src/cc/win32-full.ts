@@ -52,7 +52,7 @@ export function makeWin32Full(wm: WindowManager, host: WinwebHost): { env: Recor
     RegisterClass: (wc: number) => { wndprocSlot = dv().getInt32(wc + 4, true); wndprocSet = true; clsName = rdA(dv().getInt32(wc + 36, true)); return 1; },
     CreateWindowEx: (_ex: number, clsP: number, titleP: number, style: number, x: number, y: number, w: number, h: number, parent: number, menu: number) => {
       const cls = rdA(clsP);
-      if (style & WS_CHILD) return host.createControl(cls, parent, rdA(titleP), x, y, w, h, menu, (style & ES_MULTILINE) !== 0);   // дочерний контрол
+      if (style & WS_CHILD) return host.createControl(cls, parent, rdA(titleP), x, y, w, h, menu, style & ES_MULTILINE);   // дочерний контрол
       wm.bindDispatch((id, m, a, b) => { callWndProc(id, m, a, b); });
       const px = (x === CW_USEDEFAULT || x < 0) ? 90 : x, py = (y === CW_USEDEFAULT || y < 0) ? 80 : y;
       const id = wm.create(rdA(titleP) || clsName || 'Window', px, py, w > 0 ? w : 320, h > 0 ? h : 240);

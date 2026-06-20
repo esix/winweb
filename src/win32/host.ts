@@ -75,7 +75,8 @@ export function makeHost(wm: WindowManager): WinwebHost {
     menuSet: (win, menu) => {
       const bar: MenuBarItem[] = (menus.get(menu) ?? []).flatMap((e) =>
         e.type === 'popup'
-          ? [{ text: e.text, items: (menus.get(e.submenu) ?? []).filter((x): x is MenuLeaf => x.type !== 'popup') }]
+          ? [{ text: e.text, items: (menus.get(e.submenu) ?? []).flatMap((x): MenuLeaf[] =>
+              x.type === 'item' ? [{ type: 'item', text: x.text, id: x.id }] : x.type === 'sep' ? [{ type: 'sep' }] : []) }]
           : []);
       wm.setMenu(win, bar);
     },

@@ -325,7 +325,7 @@ export function compile(source: string): CompileResult {
     const elemSec = funcs.length ? [[0x00, OP.const, ...sleb(1), OP.end, ...vec(funcs.map((f: Node) => uleb(funcIndex.get(f.name)!)))]] : [];
     const exportSec = funcs.map((f: Node) => [...wstr(f.name), 0x00, ...uleb(funcIndex.get(f.name)!)]);
     exportSec.push([...wstr('__indirect_function_table'), 0x01, 0x00]);
-    const codeSec = compiled.map((c) => { const body = [...vec([[2, I32]]), ...c.body, OP.end]; return [...uleb(body.length), ...body]; });
+    const codeSec = compiled.map((c: { body: number[] }) => { const body = [...vec([[2, I32]]), ...c.body, OP.end]; return [...uleb(body.length), ...body]; });
     const dataItems: number[][] = [];
     for (const { s, off } of strings) dataItems.push([0x00, OP.const, ...sleb(off), OP.end, ...uleb(s.length + 1), ...[...new TextEncoder().encode(s)], 0]);
     for (const g of gInit) dataItems.push([0x00, OP.const, ...sleb(g.off), OP.end, ...uleb(4), g.v & 255, (g.v >> 8) & 255, (g.v >> 16) & 255, (g.v >> 24) & 255]);

@@ -1,6 +1,7 @@
 import './style.css';
 import { WindowManager } from './wm/window-manager';
 import { makeHost } from './win32/host';
+import { stubEnv } from './win32/wasm-env';
 import { Taskbar, type MenuNode } from './shell/taskbar';
 import { Vfs, type Entry } from './fs/vfs';
 import { Explorer } from './shell/explorer';
@@ -79,7 +80,7 @@ await vfs.seed('/cdrive/manifest.json');
           const { makeWin32Lcc } = await import('./cc/win32rt');
           const { wasm } = await compileGui(srcTxt);
           const { env, setInstance } = makeWin32Lcc(wm);
-          const { instance } = await WebAssembly.instantiate(wasm, { env: new Proxy(env, { get: (t, k) => (k in t ? t[k] : () => 0) }) });
+          const { instance } = await WebAssembly.instantiate(wasm as BufferSource, { env: stubEnv(env) });
           setInstance(instance);
           (instance.exports.main as CallableFunction)();
           con(conId, 'GUI app started.\r\n'); ccRes = 0; return;
@@ -108,7 +109,7 @@ async function launchNotepad(e: Entry): Promise<void> {
     host_prompt: (titleP: number, defP: number, buf: number, max: number) => { const r = window.prompt(io.rdA(titleP), io.rdA(defP)); return r == null ? 0 : io.wrA(buf, r, max); },
     host_load: (edit: number, p: number) => { void (async () => { const t = (await vfs.readText(io.rdA(p))) ?? ''; wm.setWindowText(edit, t); })(); },
   });
-  const { instance } = await WebAssembly.instantiate(bytes, { env: new Proxy(env, { get: (t, k) => (k in t ? t[k] : () => 0) }) });
+  const { instance } = await WebAssembly.instantiate(bytes, { env: stubEnv(env) });
   setInstance(instance);
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
 }
@@ -119,7 +120,7 @@ function openEntry(e: Entry): void {
     void (async () => {
       const bytes = await vfs.readFile(e.path);
       if (!bytes) return;
-      const mod = await WebAssembly.compile(bytes);
+      const mod = await WebAssembly.compile(bytes as BufferSource);
       if (WebAssembly.Module.exports(mod).some((x) => x.name === 'WinMain')) await launchLccGui(mod);   // lcc standalone GUI-приложение
       else console.warn('openEntry: не lcc-GUI .wasm (нет экспорта WinMain):', e.name);
     })();
@@ -148,7 +149,7 @@ async function launchCmd(): Promise<void> {
 async function launchLccGui(mod: WebAssembly.Module): Promise<void> {
   const { makeWin32Full } = await import('./cc/win32-full');
   const { env, setInstance } = makeWin32Full(wm, host);
-  const instance = await WebAssembly.instantiate(mod, { env: new Proxy(env, { get: (t, k) => (k in t ? t[k] : () => 0) }) });
+  const instance = await WebAssembly.instantiate(mod, { env: stubEnv(env) });
   setInstance(instance);
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
 }
@@ -248,9 +249,9 @@ deskItems.forEach((sc, i) => addDesktopIcon(sc.icon, sc.name, 18, 16 + i * 84, s
     const { compileC } = await import('./cc/lcc');
     const { wasm } = await compileC(src);
     let out = '';
-    const inst = new WebAssembly.Instance(new WebAssembly.Module(wasm), { env: new Proxy({ putchar: (c: number) => { out += String.fromCharCode(c & 255); return c; } } as Record<string, unknown>, { get: (t, k) => (k in t ? t[k] : () => 0) }) });
+    const inst = new WebAssembly.Instance(new WebAssembly.Module(wasm as BufferSource), { env: stubEnv({ putchar: (c: number) => { out += String.fromCharCode(c & 255); return c; } }) });
     const rc = (inst.exports as { main?: CallableFunction }).main?.();
-    return { out, rc, bytes: wasm.length, valid: WebAssembly.validate(wasm) };
+    return { out, rc, bytes: wasm.length, valid: WebAssembly.validate(wasm as BufferSource) };
   } catch (e) { return { error: (e as Error).message }; }
 };
 
@@ -261,7 +262,7 @@ deskItems.forEach((sc, i) => addDesktopIcon(sc.icon, sc.name, 18, 16 + i * 84, s
   if (!r.ok) return { errors: r.errors };
   let out = '';
   const { env } = makeEnv((s) => { out += s; });
-  const { instance } = await WebAssembly.instantiate(r.wasm!, { env });
+  const { instance } = await WebAssembly.instantiate(r.wasm! as BufferSource, { env: stubEnv(env) });
   const ret = (instance.exports.main as CallableFunction)();
   return { out, ret, bytes: r.wasm!.length };
 };
@@ -273,7 +274,7 @@ deskItems.forEach((sc, i) => addDesktopIcon(sc.icon, sc.name, 18, 16 + i * 84, s
   const r = compile(WIN32_PRELUDE + '\n' + src);
   if (!r.ok) return { errors: r.errors };
   const { env, setInstance } = makeWin32(wm, () => {});
-  const { instance } = await WebAssembly.instantiate(r.wasm!, { env });
+  const { instance } = await WebAssembly.instantiate(r.wasm! as BufferSource, { env: stubEnv(env) });
   setInstance(instance);
   (instance.exports.main as CallableFunction)();
   return { ok: true, bytes: r.wasm!.length };
