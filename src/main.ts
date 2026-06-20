@@ -4,7 +4,6 @@ import { makeHost } from './win32/host';
 import { Taskbar, type MenuNode } from './shell/taskbar';
 import { Vfs, type Entry } from './fs/vfs';
 import { Explorer } from './shell/explorer';
-import { runApp } from './win32/runtime-loader';
 import { readShortcuts } from './shell/shortcuts';
 import { executableIconUrl } from './win32/exe-icon';
 import { launchLccCmd } from './win32/lcc-cmd';
@@ -121,8 +120,8 @@ function openEntry(e: Entry): void {
       const bytes = await vfs.readFile(e.path);
       if (!bytes) return;
       const mod = await WebAssembly.compile(bytes);
-      if (WebAssembly.Module.exports(mod).some((x) => x.name === 'WinMain')) await launchLccGui(mod);   // lcc standalone-приложение
-      else await runApp(wm, host, e.name, bytes);                                                       // emscripten SIDE_MODULE
+      if (WebAssembly.Module.exports(mod).some((x) => x.name === 'WinMain')) await launchLccGui(mod);   // lcc standalone GUI-приложение
+      else console.warn('openEntry: не lcc-GUI .wasm (нет экспорта WinMain):', e.name);
     })();
   } else {
     void launchNotepad(e);
