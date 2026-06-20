@@ -1,9 +1,7 @@
-/* hello.c — минимальное Win32-приложение, доказывающее ABI динамической DLL (D1).
- * Собирается как SIDE_MODULE: каждый Win32-символ — импорт, разрешаемый при
- * загрузке против MAIN_MODULE-рантайма (win32_impl.c). Обычный Win32-код. */
+/* hello.c — минимальное Win32-приложение. Компилируется lcc-wasm в standalone-модуль
+ * (экспортит WinMain + свою память); Win32-символы — импорты, их даёт TS-фасад. */
 #include <windows.h>
 #include <string.h>      /* memset */
-#include <emscripten.h>  /* EMSCRIPTEN_KEEPALIVE */
 
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
@@ -24,9 +22,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProc(hwnd, msg, wp, lp);
 }
 
-/* KEEPALIVE — чтобы -O2 SIDE_MODULE не выбросил WinMain (DCE) и опубликовал его
-   в динамической таблице символов для dlsym(RTLD_DEFAULT,"WinMain"). */
-EMSCRIPTEN_KEEPALIVE
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmd, int show) {
     WNDCLASS wc;
     HWND hwnd;
@@ -45,7 +40,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmd, int show) {
     ShowWindow(hwnd, show);
     UpdateWindow(hwnd);                       /* ставит WM_PAINT */
 
-    while (GetMessage(&msg, NULL, 0, 0)) {    /* блокирует через emscripten_sleep + JSPI */
+    while (GetMessage(&msg, NULL, 0, 0)) {    /* фасад возвращает 0 -> цикл выходит, события идут в WndProc */
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }

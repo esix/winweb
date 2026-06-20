@@ -6,7 +6,6 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <string.h>
-#include <emscripten.h>   /* EMSCRIPTEN_KEEPALIVE (SIDE_MODULE: keep WinMain) */
 #include "game.h"
 #include "graphics.h"
 #include "preferences.h"
@@ -95,7 +94,6 @@ LRESULT CALLBACK MineWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) 
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-EMSCRIPTEN_KEEPALIVE
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmd, int show) {
     static TCHAR szClass[] = "Minesweeper";
     WNDCLASS wc;
