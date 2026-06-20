@@ -99,7 +99,7 @@ await vfs.seed('/cdrive/manifest.json');
 async function launchNotepad(e: Entry): Promise<void> {
   const path = e.path;
   const text = (await vfs.readText(path)) ?? '';
-  const bytes = await (await fetch(`/lcc/notepad.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
+  const bytes = await (await fetch(`/cdrive/Program%20Files/Notepad/Notepad.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
   const { makeWin32Full } = await import('./cc/win32-full');
   const { env, io, setInstance } = makeWin32Full(wm, host);
   Object.assign(env, {   // мосты winweb (host_*), читают/пишут память lcc-модуля + VFS
@@ -131,7 +131,7 @@ function openEntry(e: Entry): void {
 
 /* статичный демо-модуль ресурсов (.ico/.bmp из .rc): свой gdi на кучу модуля */
 async function launchIconsdemo(): Promise<void> {
-  const bytes = await (await fetch(`/lcc/iconsdemo.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
+  const bytes = await (await fetch(`/cdrive/Program%20Files/IconsDemo/IconsDemo.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
   await launchLccGui(await WebAssembly.compile(bytes));   // ресурсы .ico/.bmp грузятся реальным LoadIcon/LoadBitmap из winweb_res_table
 }
 

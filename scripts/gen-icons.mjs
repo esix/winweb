@@ -1,5 +1,5 @@
 /* gen-icons.mjs — генерирует НАСТОЯЩИЕ Windows .ico (32-bit DIB c альфой) и .bmp (24-bit)
- * для apps/iconsdemo/res/. Рисует простые фигуры в RGBA-буфер и кодирует в форматы Windows. */
+ * для src/cdrive/Projects/IconsDemo/res/. Рисует простые фигуры в RGBA-буфер и кодирует в форматы Windows. */
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 const SZ = 32;
@@ -63,9 +63,9 @@ function ico32(rgba) {                                       // одиночна
   return b;                                                                                   // AND-маска = нули (используем альфу)
 }
 
-mkdirSync('apps/iconsdemo/res', { recursive: true });
-writeFileSync('apps/iconsdemo/res/disc.ico', ico32(disc(245, 200, 30)));
-writeFileSync('apps/iconsdemo/res/diamond.ico', ico32(diamond(220, 40, 40)));
-writeFileSync('apps/iconsdemo/res/ring.ico', ico32(ring(40, 170, 70)));
-writeFileSync('apps/iconsdemo/res/smiley.bmp', bmp24(smiley()));
+mkdirSync('src/cdrive/Projects/IconsDemo/res', { recursive: true });
+writeFileSync('src/cdrive/Projects/IconsDemo/res/disc.ico', ico32(disc(245, 200, 30)));
+writeFileSync('src/cdrive/Projects/IconsDemo/res/diamond.ico', ico32(diamond(220, 40, 40)));
+writeFileSync('src/cdrive/Projects/IconsDemo/res/ring.ico', ico32(ring(40, 170, 70)));
+writeFileSync('src/cdrive/Projects/IconsDemo/res/smiley.bmp', bmp24(smiley()));
 console.log('gen-icons: wrote iconsdemo res (.ico/.bmp)');

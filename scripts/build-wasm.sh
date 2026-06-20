@@ -4,13 +4,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# iconsdemo resources: сгенерировать .ico/.bmp, вшить в iconsdemo_res.c (C-массивы + аксессоры)
+# iconsdemo resources: сгенерировать .ico/.bmp (build-cdrive сам зовёт build-rc для ResourceCompile)
 node scripts/gen-icons.mjs
-node scripts/build-rc.mjs apps/iconsdemo/iconsdemo.rc apps/iconsdemo/iconsdemo_res.c
 
-# GUI-приложения как standalone lcc-wasm модули
-node scripts/build-cdrive.mjs                      # src/cdrive/Projects/*.vcxproj -> Program Files (Hello)
-node tools/lcc/build-app.mjs                       # notepad, iconsdemo
+# проекты из src/cdrive/Projects/*.vcxproj -> public/cdrive/Program Files/<App>/<App>.wasm
+node scripts/build-cdrive.mjs                      # Hello, Notepad, IconsDemo (вкл. ресурсы)
 node tools/lcc/build-minesweeper.mjs               # minesweeper (амальгама 4 файлов + libc)
 
 # cmd-оболочка

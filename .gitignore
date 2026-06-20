@@ -6,6 +6,9 @@ dist/
 tools/lcc/.msw-build/
 tools/lcc/.app-build/
 
+# generated resource C (build-rc.mjs from .rc + res/)
+*_res.c
+
 # misc
 .DS_Store
 *.log

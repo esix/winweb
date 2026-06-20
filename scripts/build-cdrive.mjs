@@ -9,6 +9,7 @@
 import { readFileSync, readdirSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join, basename } from 'path';
+import { execFileSync } from 'child_process';
 import { buildApp } from '../tools/lcc/build-app.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,11 @@ for (const dir of readdirSync(PROJECTS)) {
   const name = proj.name || basename(vcx, '.vcxproj');
   if (only && only !== name && only !== dir) continue;
   const sources = proj.sources.map((s) => `src/cdrive/Projects/${dir}/${s}`);
+  for (const rc of proj.rc) {   // .rc -> сгенерировать _res.c (C-данные ресурсов) и добавить в сборку
+    const rcRel = `src/cdrive/Projects/${dir}/${rc}`, resRel = rcRel.replace(/\.rc$/i, '_res.c');
+    execFileSync('node', [join(ROOT, 'scripts', 'build-rc.mjs'), join(ROOT, rcRel), join(ROOT, resRel)], { stdio: 'pipe' });
+    sources.push(resRel);
+  }
   const out = `public/cdrive/Program Files/${name}/${name}.wasm`;
   mkdirSync(join(ROOT, dirname(out)), { recursive: true });
   try {

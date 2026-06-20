@@ -20,11 +20,9 @@ const ROOT = join(HERE, '..', '..');                 // winweb/
 const WASMLIBC = join(HERE, 'wasm-libc');
 const BUILD = join(HERE, '.app-build');
 
-/* приложения (descriptor временный — позже перейдём на .vcxproj в src/cdrive/Projects). */
-const APPS = {
-  notepad: { sources: ['apps/notepad/notepad.c'], libc: true, out: 'public/lcc/notepad.wasm' },
-  iconsdemo: { sources: ['apps/iconsdemo/iconsdemo.c', 'apps/iconsdemo/iconsdemo_res.c'], libc: true, out: 'public/lcc/iconsdemo.wasm' },
-};
+/* Приложения теперь описываются .vcxproj в src/cdrive/Projects/ (см. scripts/build-cdrive.mjs).
+   buildApp() здесь — общий движок сборки, импортируемый build-cdrive. APPS-CLI оставлен пустым. */
+const APPS = {};
 
 function shims(dir) {
   mkdirSync(dir, { recursive: true });
