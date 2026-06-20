@@ -654,9 +654,10 @@ VOID DrawFaceFeature(HDC hDC, INT cx, INT cy, INT state)
         SelectObject(hDC, hOldPen);
         DeleteObject(hPen);
     } else if (state == iButtonWin) {
-        /* Sunglasses */
-        POINT ptsL[] = {{cx-10, cy-6}, {cx-2, cy-6}, {cx-4, cy+2}, {cx-10, cy+2}};
-        POINT ptsR[] = {{cx+2, cy-6}, {cx+10, cy-6}, {cx+10, cy+2}, {cx+4, cy+2}};
+        /* Sunglasses (C89: POINT[] объявляем, координаты присваиваем по полям) */
+        POINT ptsL[4]; POINT ptsR[4];
+        ptsL[0].x=cx-10; ptsL[0].y=cy-6; ptsL[1].x=cx-2;  ptsL[1].y=cy-6; ptsL[2].x=cx-4;  ptsL[2].y=cy+2; ptsL[3].x=cx-10; ptsL[3].y=cy+2;
+        ptsR[0].x=cx+2;  ptsR[0].y=cy-6; ptsR[1].x=cx+10; ptsR[1].y=cy-6; ptsR[2].x=cx+10; ptsR[2].y=cy+2; ptsR[3].x=cx+4;  ptsR[3].y=cy+2;
         Polygon(hDC, ptsL, 4);
         Polygon(hDC, ptsR, 4);
         /* Bridge */

@@ -9,7 +9,6 @@ node scripts/gen-icons.mjs
 
 # проекты из src/cdrive/Projects/*.vcxproj -> public/cdrive/Program Files/<App>/<App>.wasm
 node scripts/build-cdrive.mjs                      # Hello, Notepad, IconsDemo (вкл. ресурсы)
-node tools/lcc/build-minesweeper.mjs               # minesweeper (амальгама 4 файлов + libc)
 
 # cmd-оболочка
 node tools/lcc/ccwasm.mjs apps/cmd/cmd_lcc.c

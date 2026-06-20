@@ -154,7 +154,7 @@ async function launchLccGui(mod: WebAssembly.Module): Promise<void> {
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
 }
 async function launchMinesweeper(): Promise<void> {
-  const bytes = await (await fetch(`/lcc/minesweeper.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
+  const bytes = await (await fetch(`/cdrive/Program%20Files/Minesweeper/Minesweeper.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
   await launchLccGui(await WebAssembly.compile(bytes));
 }
 

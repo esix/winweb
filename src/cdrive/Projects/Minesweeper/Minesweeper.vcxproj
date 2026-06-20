@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectName>Minesweeper</ProjectName>
+    <ConfigurationType>Application</ConfigurationType>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- настоящая игровая логика + отрисовка (game/graphics/utilities), наш тонкий хост и стабы -->
+    <ClCompile Include="game.c" />
+    <ClCompile Include="graphics.c" />
+    <ClCompile Include="utilities.c" />
+    <ClCompile Include="minesweeper_host.c" />
+    <ClCompile Include="msw-stubs.c" />
+  </ItemGroup>
+</Project>
