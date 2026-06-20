@@ -29,5 +29,12 @@ res.forEach((r, i) => { c += `  {${r.id}, "${r.mime}", res_${i}, sizeof res_${i}
 c += '};\n';
 c += `EMSCRIPTEN_KEEPALIVE const WinwebRes* winweb_res_table(void){ return winweb_res; }\n`;
 c += `EMSCRIPTEN_KEEPALIVE int winweb_res_n(void){ return ${res.length}; }\n`;
+// lcc-safe скалярные аксессоры: значения через switch, БЕЗ агрегатного инициализатора
+// struct-массива (его lcc компилирует неверно). Фасад winweb читает только эти скаляры.
+const sw = (sig, arm) => `${sig}{\n  switch(i){\n${res.map((r, i) => `    case ${i}: return ${arm(r, i)};\n`).join('')}  }\n  return 0;\n}\n`;
+c += sw('int winweb_res_id_at(int i)', (r) => r.id);
+c += sw('const char* winweb_res_mime_at(int i)', (r) => `"${r.mime}"`);
+c += sw('const unsigned char* winweb_res_data_at(int i)', (_r, i) => `res_${i}`);
+c += sw('int winweb_res_len_at(int i)', (_r, i) => `sizeof res_${i}`);
 writeFileSync(outPath, c);
 console.log(`build-rc: embedded ${res.length} resources (${res.map((r) => r.id).join(',')}) -> ${outPath}`);

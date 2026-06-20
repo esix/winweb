@@ -13,3 +13,39 @@ static const WinwebRes winweb_res[] = {
 };
 EMSCRIPTEN_KEEPALIVE const WinwebRes* winweb_res_table(void){ return winweb_res; }
 EMSCRIPTEN_KEEPALIVE int winweb_res_n(void){ return 4; }
+int winweb_res_id_at(int i){
+  switch(i){
+    case 0: return 1;
+    case 1: return 2;
+    case 2: return 3;
+    case 3: return 10;
+  }
+  return 0;
+}
+const char* winweb_res_mime_at(int i){
+  switch(i){
+    case 0: return "image/x-icon";
+    case 1: return "image/x-icon";
+    case 2: return "image/x-icon";
+    case 3: return "image/bmp";
+  }
+  return 0;
+}
+const unsigned char* winweb_res_data_at(int i){
+  switch(i){
+    case 0: return res_0;
+    case 1: return res_1;
+    case 2: return res_2;
+    case 3: return res_3;
+  }
+  return 0;
+}
+int winweb_res_len_at(int i){
+  switch(i){
+    case 0: return sizeof res_0;
+    case 1: return sizeof res_1;
+    case 2: return sizeof res_2;
+    case 3: return sizeof res_3;
+  }
+  return 0;
+}

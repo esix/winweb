@@ -23,15 +23,11 @@ emcc apps/Connect.c src/native/win32_impl.c -O2 -I include \
 
 # Notepad теперь собирается lcc-wasm под node:  node tools/lcc/build-app.mjs notepad -> public/lcc/notepad.wasm
 
-# Icons demo — РЕАЛЬНЫЕ .ico/.bmp ресурсы, объявленные в iconsdemo.rc, вшиваются в .wasm
-# (build-rc.mjs вместо rc.exe) и достаются стандартными LoadIcon/LoadBitmap (код приложения без правок).
+# Icons demo: .ico/.bmp ресурсы (gen-icons.mjs) -> iconsdemo_res.c (build-rc.mjs вместо rc.exe).
+# Сам .wasm теперь собирает lcc:  node tools/lcc/build-app.mjs iconsdemo -> public/lcc/iconsdemo.wasm
+# (LoadIcon/LoadBitmap в фасаде читают winweb_res_table() из экспортов модуля).
 node scripts/gen-icons.mjs
 node scripts/build-rc.mjs apps/iconsdemo/iconsdemo.rc apps/iconsdemo/iconsdemo_res.c
-emcc apps/iconsdemo/iconsdemo.c apps/iconsdemo/iconsdemo_res.c src/native/win32_impl.c -O2 -I include -fshort-wchar \
-     -sASYNCIFY -sMODULARIZE=1 -sEXPORT_ES6=1 -sINVOKE_RUN=0 \
-     -sEXPORTED_FUNCTIONS=_main,_wm_post \
-     -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8 \
-     -o src/wasm/iconsdemo.js
 
 # === DLL runtime (D1) =========================================================
 # win32_impl.c as a MAIN_MODULE runtime that EXPORTS the Win32 API; apps load as
@@ -54,4 +50,4 @@ emcc src/native/win32_impl.c -O2 -I include -fshort-wchar \
 #   node tools/lcc/ccwasm.mjs apps/cmd/cmd_lcc.c && cp apps/cmd/cmd_lcc.wasm public/lcc/cmd_lcc.wasm
 #   node tools/lcc/build-minesweeper.mjs     -> public/lcc/minesweeper.wasm
 
-echo "built user32.js, win32app.js, iconsdemo.js, runtime.js (emscripten). hello/notepad/cmd/minesweeper -> lcc-wasm (tools/lcc/)"
+echo "built user32.js, win32app.js, runtime.js (emscripten). hello/notepad/iconsdemo/cmd/minesweeper -> lcc-wasm (tools/lcc/)"

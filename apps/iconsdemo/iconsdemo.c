@@ -16,13 +16,14 @@ LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
     switch (m) {
         case WM_PAINT: {
             PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(h, &ps);
+            HDC hdc, mem;
+            hdc = BeginPaint(h, &ps);
             TextOut(hdc, 16, 12, "3 icons (.ico) + 1 bitmap (.bmp) from iconsdemo.rc,", 51);
             TextOut(hdc, 16, 28, "embedded in the .wasm, loaded by handle:", 40);
             DrawIcon(hdc, 36, 56, g_ic[0]);
             DrawIcon(hdc, 96, 56, g_ic[1]);
             DrawIcon(hdc, 156, 56, g_ic[2]);
-            HDC mem = CreateCompatibleDC(hdc);          /* BitBlt битмапа, как в настоящем Win32 */
+            mem = CreateCompatibleDC(hdc);              /* BitBlt битмапа, как в настоящем Win32 */
             SelectObject(mem, g_bmp);
             BitBlt(hdc, 216, 56, 32, 32, mem, 0, 0, SRCCOPY);
             DeleteDC(mem);

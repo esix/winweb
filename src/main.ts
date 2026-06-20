@@ -1,8 +1,6 @@
 import './style.css';
-import createIconsdemo from './wasm/iconsdemo.js';
 import { WindowManager } from './wm/window-manager';
 import { makeHost } from './win32/host';
-import { Gdi } from './win32/gdi';
 import { Taskbar, type MenuNode } from './shell/taskbar';
 import { Vfs, type Entry } from './fs/vfs';
 import { Explorer } from './shell/explorer';
@@ -133,10 +131,8 @@ function openEntry(e: Entry): void {
 
 /* статичный демо-модуль ресурсов (.ico/.bmp из .rc): свой gdi на кучу модуля */
 async function launchIconsdemo(): Promise<void> {
-  const app = await createIconsdemo();
-  (host as unknown as { gdi: Gdi }).gdi = new Gdi(wm, () => app.HEAPU8);
-  wm.bindDispatch((id, m, w, l) => { app._wm_post(id, m, w, l); });
-  app._main();
+  const bytes = await (await fetch(`/lcc/iconsdemo.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
+  await launchLccGui(await WebAssembly.compile(bytes));   // ресурсы .ico/.bmp грузятся реальным LoadIcon/LoadBitmap из winweb_res_table
 }
 
 /* запуск цели ярлыка: app:* -> встроенный, папка -> Проводник, иначе -> openEntry (.wasm/файл) */

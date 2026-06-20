@@ -20,6 +20,7 @@ interface Win32Io { rdA: (p: number) => string; wrA: (p: number, s: string, max:
 export function makeWin32Full(wm: WindowManager, host: WinwebHost): { env: Record<string, unknown>; setInstance: (i: WebAssembly.Instance) => void; io: Win32Io } {
   let mem: WebAssembly.Memory | null = null;
   let table: WebAssembly.Table | null = null;
+  let inst: WebAssembly.Instance | null = null;
   let wndprocSlot = 0, wndprocSet = false, clsName = '';
   const gdi = new Gdi(wm, () => (mem ? new Uint8Array(mem.buffer) : new Uint8Array(0)));
   const dv = () => new DataView(mem!.buffer);
@@ -32,6 +33,18 @@ export function makeWin32Full(wm: WindowManager, host: WinwebHost): { env: Recor
     if (!table || !wndprocSet) return 0;
     const f = table.get(wndprocSlot) as ((a: number, b: number, c: number, d: number) => number) | null;
     return f ? f(hwnd, msg, wp, lp) | 0 : 0;
+  };
+  /* LoadIcon/LoadBitmap: ресурс из таблицы модуля -> gdi.loadImageRes. Индексацию делают
+     C-аксессоры winweb_res_*_at (раскладку struct знает компилятор), фасад читает только скаляры. */
+  const loadRes = (id: number): number => {
+    const ex = inst?.exports as Record<string, CallableFunction> | undefined;
+    if (!ex?.winweb_res_n || !ex.winweb_res_id_at) return 0;
+    const n = ex.winweb_res_n() as unknown as number;
+    for (let i = 0; i < n; i++) {
+      if ((ex.winweb_res_id_at(i) as unknown as number) === id)
+        return gdi.loadImageRes(ex.winweb_res_data_at(i) as unknown as number, ex.winweb_res_len_at(i) as unknown as number, rdA(ex.winweb_res_mime_at(i) as unknown as number));
+    }
+    return 0;
   };
 
   const env: Record<string, unknown> = {
@@ -111,12 +124,13 @@ export function makeWin32Full(wm: WindowManager, host: WinwebHost): { env: Recor
     GetSystemMetrics: (i: number) => (({ 0: 1280, 1: 800, 4: 20, 5: 1, 6: 1, 15: 20 } as Record<number, number>)[i] ?? 0),
     GetTickCount64: () => BigInt(Date.now()),
     MessageBox: () => 1, ShellAbout: () => 0, GetDlgItemInt: () => 0, LoadString: () => 0,
-    LoadIcon: () => 0, LoadCursor: () => 0, LoadBitmap: () => 0, SetCursor: () => 0, ShowCursor: () => 0,
+    LoadIcon: (_h: number, id: number) => loadRes(id), LoadBitmap: (_h: number, id: number) => loadRes(id),
+    LoadCursor: () => 0, SetCursor: () => 0, ShowCursor: () => 0,
 
     /* --- консоль (сапёр GUI; заглушки) --- */
     AllocConsole: () => 1, GetStdHandle: () => 1, SetConsoleTitleA: () => 1, ReadConsoleA: () => 0,
     WriteConsoleA: (_h: number, _buf: number, len: number, written: number) => { if (written) dv().setInt32(written, len, true); return 1; },
   };
 
-  return { env, io: { rdA, wrA }, setInstance: (i) => { mem = i.exports.memory as WebAssembly.Memory; table = i.exports.__indirect_function_table as WebAssembly.Table; } };
+  return { env, io: { rdA, wrA }, setInstance: (i) => { inst = i; mem = i.exports.memory as WebAssembly.Memory; table = i.exports.__indirect_function_table as WebAssembly.Table; } };
 }
