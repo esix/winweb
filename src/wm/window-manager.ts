@@ -248,6 +248,7 @@ export class WindowManager {
       const s = document.createElement('span'); s.className = 'ctl ctl-static'; s.textContent = text; el = s;
     }
     el.style.left = `${x}px`; el.style.top = `${y}px`; el.style.width = `${w}px`; el.style.height = `${h}px`;
+    if (kind === 'EDIT' && multiline) { el.style.right = '0'; el.style.bottom = '0'; el.style.width = 'auto'; el.style.height = 'auto'; }   // многострочный EDIT тянется с клиентом (ресайз окна)
     parent.client.appendChild(el);
     this.controls.set(id, { id, el, parentId, ctrlId });
     return id;

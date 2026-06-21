@@ -12,6 +12,7 @@ import type { WindowManager } from '../wm/window-manager';
 import type { WinwebHost } from '../win32/host';
 import { Gdi } from '../win32/gdi';
 
+const UTF8D = new TextDecoder(), UTF8E = new TextEncoder();   // char* в lcc-приложениях — UTF-8
 const WM_PAINT = 0x000f, WM_CREATE = 0x0001, WS_CHILD = 0x40000000, ES_MULTILINE = 0x0004;
 const CW_USEDEFAULT = 0x80000000 | 0;   // -2147483648
 
@@ -25,9 +26,9 @@ export function makeWin32Full(wm: WindowManager, host: WinwebHost): { env: Recor
   const gdi = new Gdi(wm, () => (mem ? new Uint8Array(mem.buffer) : new Uint8Array(0)));
   const dv = () => new DataView(mem!.buffer);
   const u8 = () => new Uint8Array(mem!.buffer);
-  const rdA = (p: number) => { const b = u8(); let s = ''; while (b[p]) s += String.fromCharCode(b[p++]); return s; };               // ANSI
+  const rdA = (p: number) => { const b = u8(); let e = p; while (b[e]) e++; return UTF8D.decode(b.subarray(p, e)); };               // UTF-8 (char*)
   const rdW = (p: number, n: number) => { const v = dv(); let s = ''; for (let i = 0; i < n; i++) { const c = v.getUint16(p + i * 2, true); if (!c) break; s += String.fromCharCode(c); } return s; };   // UTF-16LE (wchar=2)
-  const wrA = (p: number, s: string, max: number) => { const b = u8(); let i = 0; for (; i < s.length && i < max - 1; i++) b[p + i] = s.charCodeAt(i) & 255; b[p + i] = 0; return i; };
+  const wrA = (p: number, s: string, max: number) => { const b = u8(), enc = UTF8E.encode(s); let i = 0; for (; i < enc.length && i < max - 1; i++) b[p + i] = enc[i]; b[p + i] = 0; return i; };   // UTF-8
   const rect = (p: number) => { const v = dv(); return [v.getInt32(p, true), v.getInt32(p + 4, true), v.getInt32(p + 8, true), v.getInt32(p + 12, true)] as const; };
   const callWndProc = (hwnd: number, msg: number, wp: number, lp: number): number => {
     if (!table || !wndprocSet) return 0;

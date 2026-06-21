@@ -172,7 +172,7 @@ async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, c
     winweb_cwd: (buf: number, max: number) => wrA(buf, cwd, max),
     winweb_stdout: () => con,
     winweb_msbuild: (argsPtr: number, c: number) => { void msbuildTool(rdA(argsPtr), cwd, c); return 0; },
-    winweb_cc: (argsPtr: number, c: number) => { ccTool(rdA(argsPtr), cwd, c); return 0; },
+    winweb_cc: (argsPtr: number, c: number) => { void ccTool(rdA(argsPtr), cwd, c); return 0; },
     __read: () => 0,
     __write: (_fd: number, ptr: number, len: number) => { const b = new Uint8Array(mem.buffer, ptr, len); let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(b[i]); conWrite(con, s.replace(/\r?\n/g, '\r\n')); return len; },
     __exit: () => 0,
@@ -182,11 +182,21 @@ async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, c
   (instance.exports.main as CallableFunction)();
 }
 
-/* cc.wasm -> winweb_cc: скомпилировать+запустить один C-файл (путь относительно cwd) */
-function ccTool(args: string, cwd: string, con: number): void {
+/* cc.wasm -> winweb_cc: КОМПИЛИРУЕТ один C-файл в <name>.wasm (как настоящий cc — не запускает;
+   запустить потом отдельно: имя без расширения найдётся в cwd). Путь — относительно cwd. */
+async function ccTool(args: string, cwd: string, con: number): Promise<void> {
+  const log = (s: string) => conWrite(con, s);
   const a = args.trim();
-  if (!a) { conWrite(con, 'cc: usage: cc <file.c>\r\n'); return; }
-  (host as unknown as { ccStart: (path: string, c: number) => void }).ccStart(resolveCwd(a, cwd), con);
+  if (!a) { log('cc: usage: cc <file.c>   (компилирует в <name>.wasm; запуск потом: <name>)\r\n'); return; }
+  const src = resolveCwd(a, cwd);
+  const text = await vfs.readText(src);
+  if (text == null) { log(`cc: cannot open ${src}\r\n`); return; }
+  let wasm: Uint8Array;
+  try { ({ wasm } = await (await import('./cc/lcc')).compileProject([text])); }
+  catch (e) { log(`cc: ${String((e as Error).message).split('\n').slice(0, 5).join('\r\n  ')}\r\n`); return; }
+  const out = src.replace(/\.[cC]$/, '.wasm');
+  await vfs.writeFile(out, wasm);
+  log(`cc: ${a} -> ${out.split('\\').pop()} (${wasm.length} bytes)\r\n`);
 }
 
 /* msbuild.wasm -> winweb_msbuild: собрать проект args (относительно cwd / C:\Projects), вывод в con */
@@ -196,7 +206,7 @@ async function msbuildTool(args: string, cwd: string, con: number): Promise<void
   if (!a) { log('MSBuild: usage: msbuild <project>   (e.g. msbuild Hello)\r\n'); return; }
   for (const dir of [resolveCwd(a, cwd), a, `C:\\Projects\\${a.replace(/\\+$/, '').split('\\').pop()}`]) {
     const ents = await vfs.readdir(dir).catch(() => [] as Entry[]);
-    if (ents.some((e) => e.name.toLowerCase().endsWith('.vcxproj'))) { await msbuildAndRun(dir, log); return; }
+    if (ents.some((e) => e.name.toLowerCase().endsWith('.vcxproj'))) { await msbuildBuild(dir, log); return; }
   }
   log(`MSBuild: project not found: ${a}\r\n`);
 }
@@ -210,18 +220,15 @@ async function launchLccGui(mod: WebAssembly.Module): Promise<void> {
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
 }
 
-/* msbuild: собрать проект из VFS (cpp.ts+rcc.wasm) -> C:\Program Files\<App> и, если GUI, запустить */
-async function msbuildAndRun(dir: string, log: (s: string) => void): Promise<number> {
+/* msbuild: собрать проект из VFS (cpp.ts+rcc.wasm) -> C:\Program Files\<App>\<App>.wasm.
+   НЕ запускает (как настоящий msbuild) — собранное приложение запускается отдельно (ярлык/Проводник). */
+async function msbuildBuild(dir: string, log: (s: string) => void): Promise<number> {
   const { buildProject } = await import('./cc/msbuild');
-  const { code, wasm } = await buildProject(vfs, dir, log);
-  if (code === 0 && wasm) {
-    const mod = await WebAssembly.compile(wasm as BufferSource);
-    if (WebAssembly.Module.exports(mod).some((x) => x.name === 'WinMain')) await launchLccGui(mod);
-  }
+  const { code } = await buildProject(vfs, dir, log);
   return code;
 }
 (window as unknown as { __msbuild: (d: string) => Promise<unknown> }).__msbuild = async (d: string) => {
-  let out = ''; const code = await msbuildAndRun(d, (s) => { out += s; });
+  let out = ''; const code = await msbuildBuild(d, (s) => { out += s; });
   return { code, log: out };
 };
 async function launchMinesweeper(): Promise<void> {
