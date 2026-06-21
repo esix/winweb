@@ -1,5 +1,5 @@
 {
-  "version": 44,
+  "version": 45,
   "entries": [
     {
       "path": "C:",
@@ -269,7 +269,7 @@
     {
       "path": "C:\\Projects\\greet\\greet.c",
       "type": "file",
-      "text": "/* greet.c — пример КОНСОЛЬНОГО приложения (экспортит main).\n * Собирается (msbuild greet) и запускается из консоли по имени (greet)\n * или двойным кликом в Проводнике по C:\\Windows\\System32\\greet.wasm (откроется консоль).\n * Демонстрирует printf и чтение строки.\n *\n * Однопоточный wasm не даёт блокирующего gets(), поэтому ввод СОБЫТИЙНЫЙ:\n *   main()       — печатает приветствие и приглашение (один раз);\n *   input_buf()  — адрес буфера, куда хост кладёт введённую строку;\n *   on_line()    — хост зовёт на КАЖДУЮ введённую строку (по Enter). */\n#include <stdio.h>\n#include <string.h>\n\nstatic char g_line[256];\n\nchar *input_buf(void) { return g_line; }   /* хост пишет сюда строку перед on_line() */\n\nint main(void) {\n    printf(\"Hello, World!\\n\");\n    printf(\"What is your name? \");\n    return 0;\n}\n\nvoid on_line(void) {\n    char *e = g_line;\n    while (*e && *e != '\\r' && *e != '\\n') e++;\n    *e = 0;                                          /* отрезать перевод строки */\n    if (g_line[0])\n        printf(\"Nice to meet you, %s!\\n\", g_line);\n    printf(\"Type another line, or close the window.\\n> \");\n}\n"
+      "text": "/* greet.c — пример КОНСОЛЬНОГО приложения (экспортит main).\n * Собирается (msbuild greet) и запускается из консоли по имени (greet)\n * или двойным кликом в Проводнике по C:\\Windows\\System32\\greet.wasm (откроется консоль).\n * Демонстрирует printf, чтение строки и выход (exit).\n *\n * Однопоточный wasm не даёт блокирующего gets(), поэтому ввод СОБЫТИЙНЫЙ:\n *   main()       — печатает приветствие и приглашение (один раз);\n *   input_buf()  — адрес буфера, куда хост кладёт введённую строку;\n *   on_line()    — хост зовёт на КАЖДУЮ введённую строку (по Enter).\n * Выход: команда \"exit\"/\"quit\" -> exit() закрывает окно консоли (или просто закрыть окно). */\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nstatic char g_line[256];\n\nchar *input_buf(void) { return g_line; }   /* хост пишет сюда строку перед on_line() */\n\nint main(void) {\n    printf(\"Hello, World!\\n\");\n    printf(\"What is your name? \");\n    return 0;\n}\n\nvoid on_line(void) {\n    char *e = g_line;\n    while (*e && *e != '\\r' && *e != '\\n') e++;\n    *e = 0;                                          /* отрезать перевод строки */\n    if (!strcasecmp(g_line, \"exit\") || !strcasecmp(g_line, \"quit\")) {\n        printf(\"Bye!\\n\");\n        exit(0);                                     /* -> закрывает окно консоли */\n    }\n    if (g_line[0])\n        printf(\"Nice to meet you, %s!\\n\", g_line);\n    printf(\"Type a name, or \\\"exit\\\" to quit.\\n> \");\n}\n"
     },
     {
       "path": "C:\\Projects\\greet\\greet.vcxproj",

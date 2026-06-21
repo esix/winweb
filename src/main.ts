@@ -156,9 +156,10 @@ async function execWasmFile(wasmPath: string, args: string, cwd: string, con: nu
   if (ex.some((e) => e.name === 'main')) {                                                        // консольное приложение/инструмент
     const h = host as unknown as { conOpen: () => number; conTitle: (i: number, t: string) => void };
     const interactive = ex.some((e) => e.name === 'on_line');   // читает ввод -> своя консоль (иначе опрос столкнётся с cmd)
+    const own = con == null || interactive;                     // мы открываем СВОЮ консоль -> exit() может её закрыть
     let conId = con;
-    if (conId == null || interactive) { conId = h.conOpen(); h.conTitle(conId, wasmPath.split('\\').pop()?.replace(/\.wasm$/i, '') ?? 'console'); }
-    await launchConsoleTool(bytes, args, cwd, conId);
+    if (own) { conId = h.conOpen(); h.conTitle(conId, wasmPath.split('\\').pop()?.replace(/\.wasm$/i, '') ?? 'console'); }
+    await launchConsoleTool(bytes, args, cwd, conId!, own);
   }
 }
 
@@ -199,8 +200,9 @@ async function linkDlls(env: Record<string, unknown>): Promise<Record<string, un
 
 /* консольный инструмент C:\Windows\System32\*.wasm (msbuild, cc): тонкий wasm, зовущий winweb_* в JS.
    Получает аргументы (winweb_args), cwd (winweb_cwd), id консоли (winweb_stdout); stdout (__write) -> эта консоль. */
-async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, con: number): Promise<void> {
+async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, con: number, own = false): Promise<void> {
   let mem: WebAssembly.Memory;
+  let exited = false;
   const u8 = () => new Uint8Array(mem.buffer);
   const rdA = (p: number) => { const b = u8(); let e = p; while (b[e]) e++; return U8D.decode(b.subarray(p, e)); };
   const wrA = (p: number, s: string, max: number) => { const b = u8(), enc = U8E.encode(s); let i = 0; for (; i < enc.length && i < max - 1; i++) b[p + i] = enc[i]; b[p + i] = 0; return i; };
@@ -212,7 +214,7 @@ async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, c
     winweb_cc: (argsPtr: number, c: number) => { void ccTool(rdA(argsPtr), cwd, c); return 0; },
     __read: () => 0,
     __write: (_fd: number, ptr: number, len: number) => { conWrite(con, U8D.decode(u8().subarray(ptr, ptr + len)).replace(/\r?\n/g, '\r\n')); return len; },
-    __exit: () => 0,
+    __exit: () => { exited = true; if (own) host.destroyWindow(con); return 0; },   // exit()/abort() -> закрыть СВОЮ консоль (не cmd-овскую)
   };
   const { instance } = await WebAssembly.instantiate(bytes as BufferSource, { env: stubEnv(env) });
   mem = instance.exports.memory as WebAssembly.Memory;
@@ -220,14 +222,16 @@ async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, c
   (ex.main as CallableFunction)();
   // событийный ввод: приложение экспортит input_buf()+on_line() -> кормим введённые строки (Enter).
   // (синхронный gets() в однопоточном wasm невозможен; модель как у cmd.)
-  if (typeof ex.input_buf === 'function' && typeof ex.on_line === 'function') {
+  if (!exited && typeof ex.input_buf === 'function' && typeof ex.on_line === 'function') {
     const inputAddr = (ex.input_buf as CallableFunction)() as number;
     const poll = setInterval(() => {
+      if (exited) { clearInterval(poll); return; }            // приложение вызвало exit()
       const line = host.conTryLine(con);
-      if (line === false) { clearInterval(poll); return; }   // консоль закрыта
+      if (line === false) { clearInterval(poll); return; }    // консоль закрыта
       if (line === null) return;                              // строк пока нет
       wrA(inputAddr, line, 256);
       (ex.on_line as CallableFunction)();
+      if (exited) clearInterval(poll);                        // on_line вызвал exit()
     }, 60);
   }
 }
