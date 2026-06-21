@@ -2,6 +2,8 @@
   "name": "winweb",
   "private": true,
   "version": "0.0.0",
+  "description": "A Win9x-style desktop in the browser running real Win32 C apps compiled to WebAssembly by its own lcc-wasm toolchain (no Emscripten).",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build:wasm": "bash scripts/build-wasm.sh",
