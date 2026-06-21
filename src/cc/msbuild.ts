@@ -39,6 +39,9 @@ export async function buildProject(vfs: Vfs, dir: string, log: (s: string) => vo
   if (!vcx) { log(`MSBuild: no .vcxproj in ${dir}\r\n`); return { code: 1 }; }
   const xml = (await vfs.readText(`${dir}\\${vcx.name}`)) ?? '';
   const name = /<ProjectName>([^<]+)<\/ProjectName>/.exec(xml)?.[1] || vcx.name.replace(/\.vcxproj$/i, '');
+  const subsystem = /<SubSystem>([^<]+)<\/SubSystem>/.exec(xml)?.[1] || '';
+  const systemTool = /<SystemTool>([^<]+)<\/SystemTool>/.exec(xml)?.[1] || '';
+  const isSystem32 = /console/i.test(subsystem) || /true/i.test(systemTool);   // System32-инструмент (как build-cdrive)
   const cl = [...xml.matchAll(/<ClCompile\s+Include="([^"]+)"/g)].map((m) => m[1].replace(/\//g, '\\'));
   const rc = [...xml.matchAll(/<ResourceCompile\s+Include="([^"]+)"/g)].map((m) => m[1].replace(/\//g, '\\'));
   log(`MSBuild ${name}: ${cl.length} source(s)${rc.length ? `, ${rc.length} .rc` : ''}\r\n`);
@@ -55,10 +58,16 @@ export async function buildProject(vfs: Vfs, dir: string, log: (s: string) => vo
   try { ({ wasm } = await compileProject(sources, headers)); }
   catch (e) { log(`  ${String((e as Error).message).split('\n').slice(0, 5).join('\r\n  ')}\r\n  Build FAILED.\r\n`); return { code: 1 }; }
 
-  const outDir = `C:\\Program Files\\${name}`;
-  await vfs.mkdir('C:\\Program Files').catch(() => {});
-  await vfs.mkdir(outDir).catch(() => {});
-  const out = `${outDir}\\${name}.wasm`;
+  let out: string;
+  if (isSystem32) {                                          // консольный/GUI системный инструмент -> C:\Windows\System32
+    await vfs.mkdir('C:\\Windows').catch(() => {});
+    await vfs.mkdir('C:\\Windows\\System32').catch(() => {});
+    out = `C:\\Windows\\System32\\${name}.wasm`;
+  } else {                                                   // приложение -> C:\Program Files\<name>
+    await vfs.mkdir('C:\\Program Files').catch(() => {});
+    await vfs.mkdir(`C:\\Program Files\\${name}`).catch(() => {});
+    out = `C:\\Program Files\\${name}\\${name}.wasm`;
+  }
   await vfs.writeFile(out, wasm);
   log(`  ${name}.wasm -> ${out} (${wasm.length} bytes)\r\n  Build succeeded.\r\n`);
   return { code: 0, wasm, name };

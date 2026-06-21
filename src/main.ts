@@ -153,10 +153,11 @@ async function execWasmFile(wasmPath: string, args: string, cwd: string, con: nu
     return;
   }
   if (ex.some((e) => e.name === 'WinMain')) { await launchLccGui(mod, wasmIconUrl(bytes)); return; }   // оконное приложение
-  if (ex.some((e) => e.name === 'main')) {                                                        // консольный инструмент
+  if (ex.some((e) => e.name === 'main')) {                                                        // консольное приложение/инструмент
     const h = host as unknown as { conOpen: () => number; conTitle: (i: number, t: string) => void };
+    const interactive = ex.some((e) => e.name === 'on_line');   // читает ввод -> своя консоль (иначе опрос столкнётся с cmd)
     let conId = con;
-    if (conId == null) { conId = h.conOpen(); h.conTitle(conId, wasmPath.split('\\').pop()?.replace(/\.wasm$/i, '') ?? 'console'); }
+    if (conId == null || interactive) { conId = h.conOpen(); h.conTitle(conId, wasmPath.split('\\').pop()?.replace(/\.wasm$/i, '') ?? 'console'); }
     await launchConsoleTool(bytes, args, cwd, conId);
   }
 }
@@ -215,7 +216,20 @@ async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, c
   };
   const { instance } = await WebAssembly.instantiate(bytes as BufferSource, { env: stubEnv(env) });
   mem = instance.exports.memory as WebAssembly.Memory;
-  (instance.exports.main as CallableFunction)();
+  const ex = instance.exports as Record<string, unknown>;
+  (ex.main as CallableFunction)();
+  // событийный ввод: приложение экспортит input_buf()+on_line() -> кормим введённые строки (Enter).
+  // (синхронный gets() в однопоточном wasm невозможен; модель как у cmd.)
+  if (typeof ex.input_buf === 'function' && typeof ex.on_line === 'function') {
+    const inputAddr = (ex.input_buf as CallableFunction)() as number;
+    const poll = setInterval(() => {
+      const line = host.conTryLine(con);
+      if (line === false) { clearInterval(poll); return; }   // консоль закрыта
+      if (line === null) return;                              // строк пока нет
+      wrA(inputAddr, line, 256);
+      (ex.on_line as CallableFunction)();
+    }, 60);
+  }
 }
 
 /* cc.wasm -> winweb_cc: КОМПИЛИРУЕТ один C-файл в <name>.wasm (как настоящий cc — не запускает;

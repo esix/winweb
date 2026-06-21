@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectName>greet</ProjectName>
+    <ConfigurationType>Application</ConfigurationType>
+    <!-- Консольное приложение -> C:\Windows\System32\greet.wasm (запуск по имени из cmd / двойным кликом) -->
+    <SubSystem>Console</SubSystem>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="greet.c" />
+  </ItemGroup>
+</Project>
