@@ -10,5 +10,6 @@ node scripts/gen-icons.mjs
 # ВСЕ проекты из src/cdrive/Projects/*.vcxproj -> public/cdrive/Program Files/<App>/<App>.wasm
 # (Hello, Notepad, IconsDemo, Minesweeper, cmd) — vite копирует public/ -> dist/
 node scripts/build-cdrive.mjs
+node scripts/gen-manifest.mjs                      # обход src/cdrive + Program Files -> manifest.json
 
 echo "built all apps via lcc-wasm (node only, no emscripten)"
