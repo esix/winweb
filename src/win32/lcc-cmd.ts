@@ -17,18 +17,25 @@ interface Snapshot {
   dirs: Map<string, { name: string; path: string; type: 'dir' | 'file'; size: number }[]>;
   texts: Map<string, string>;
   all: Map<string, { type: 'dir' | 'file'; size: number }>;
+  lc: Map<string, string>;   // путь в нижнем регистре -> канонический (регистронезависимость)
 }
+
+/* нормализация пути в нижний регистр (как vfs.norm, но lower) — для регистронезависимого поиска */
+const lcNorm = (p: string): string => { let s = p.replace(/\//g, '\\').replace(/\\+/g, '\\'); if (s.length > 1 && s.endsWith('\\')) s = s.slice(0, -1); return s.toLowerCase(); };
 
 async function loadSnapshot(vfs: Vfs): Promise<Snapshot> {
   const dirs: Snapshot['dirs'] = new Map();
   const texts = new Map<string, string>();
   const all: Snapshot['all'] = new Map();
+  const lc = new Map<string, string>();
+  lc.set('c:', 'C:\\');   // корень
   async function walk(dir: string): Promise<void> {
     let entries;
     try { entries = await vfs.readdir(dir); } catch { return; }
     dirs.set(dir, entries);
     for (const e of entries) {
       all.set(e.path, { type: e.type, size: e.size });
+      lc.set(lcNorm(e.path), e.path);
       if (e.type === 'dir') await walk(e.path);
       else if (e.size < 262144 && !e.path.toLowerCase().endsWith('.wasm')) {
         try { const t = await vfs.readText(e.path); if (t != null) texts.set(e.path, t); } catch { /* ignore */ }
@@ -36,22 +43,24 @@ async function loadSnapshot(vfs: Vfs): Promise<Snapshot> {
     }
   }
   await walk('C:\\');
-  return { dirs, texts, all };
+  return { dirs, texts, all, lc };
 }
 
-/* dir/type над снимком (формат как в эмскриптеновском мосте) */
+/* dir/type/resolve-dir над снимком (регистронезависимо). op: 0=dir, 1=type, 2=resolve-dir (для cd) */
 function vfsLookup(op: number, path: string, snap: Snapshot): string {
+  const c = snap.lc.get(lcNorm(path));                                   // канонический путь (регистронезависимо)
+  if (op === 2) return c && snap.dirs.has(c) ? c : '';                   // cd: канонический путь папки, или "" если её нет
   if (op === 0) {
-    const es = snap.dirs.get(path);
+    const es = c ? snap.dirs.get(c) : undefined;
     if (!es) return `The system cannot find the path specified.`;
     const sorted = [...es].sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1));
-    let s = `\r\n Directory of ${path}\r\n\r\n`;
+    let s = `\r\n Directory of ${c}\r\n\r\n`;
     for (const e of sorted) s += e.type === 'dir' ? `             <DIR>  ${e.name}\r\n` : `${String(e.size).padStart(18)}  ${e.name}\r\n`;
     return s + `${' '.repeat(15)}${sorted.length} item(s)\r\n`;
   }
-  const t = snap.texts.get(path);
+  const t = c ? snap.texts.get(c) : undefined;
   if (t != null) return t;
-  return snap.all.get(path) ? `(binary file)` : `The system cannot find the file: ${path}`;
+  return c && snap.all.get(c) ? `(binary file)` : `The system cannot find the file: ${path}`;
 }
 
 export interface LccCmdHooks {
@@ -62,7 +71,7 @@ export interface LccCmdHooks {
 export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vfs, wasmBytes: BufferSource, hooks: LccCmdHooks): Promise<void> {
   const conId = host.conOpen();
   let mem!: WebAssembly.Memory;
-  let snap: Snapshot = { dirs: new Map(), texts: new Map(), all: new Map() };
+  let snap: Snapshot = { dirs: new Map(), texts: new Map(), all: new Map(), lc: new Map() };
 
   const u8 = () => new Uint8Array(mem.buffer);
   const dv = () => new DataView(mem.buffer);
@@ -84,10 +93,10 @@ export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vf
     winweb_exec: (pathPtr: number, argsPtr: number, cwdPtr: number, con: number) => {
       const path = rd(pathPtr), args = rd(argsPtr), cwd = rd(cwdPtr), base = path.replace(/\\+$/, '').split('\\').pop() || path;
       for (const p of [`${path}.wasm`, path, `C:\\Windows\\System32\\${base}.wasm`]) {   // cwd, затем System32 (PATH позже)
-        const e = snap.all.get(p);
-        if (e?.type === 'file' && p.toLowerCase().endsWith('.wasm')) { hooks.exec(p, args, cwd, con); return 1; }
+        const c = snap.lc.get(lcNorm(p));                                                 // канонический путь (регистронезависимо)
+        if (c && snap.all.get(c)?.type === 'file' && c.toLowerCase().endsWith('.wasm')) { hooks.exec(c, args, cwd, con); return 1; }
       }
-      for (const p of [`${path}.exe`, path]) { const e = snap.all.get(p); if (e?.type === 'file' && p.toLowerCase().endsWith('.exe')) return 2; }
+      for (const p of [`${path}.exe`, path]) { const c = snap.lc.get(lcNorm(p)); if (c && snap.all.get(c)?.type === 'file' && c.toLowerCase().endsWith('.exe')) return 2; }
       return 0;
     },
   };

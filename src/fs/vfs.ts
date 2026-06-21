@@ -51,21 +51,41 @@ export class Vfs {
     const { parent, name } = split(path);
     await this.p(this.tx('readwrite').put({ path: norm(path), name, parent, type: 'file', data } as Rec));
   }
+  /** Канонический путь (РЕГИСТРОНЕЗАВИСИМО): резолвит каждый сегмент по фактическим именам. null если нет такого. */
+  private async canonical(path: string): Promise<string | null> {
+    const parts = norm(path).split('\\');
+    let cur = parts[0].toUpperCase();                          // диск, напр. 'C:'
+    for (let i = 1; i < parts.length; i++) {
+      const kids = await this.p<Rec[]>(this.tx('readonly').index('parent').getAll(cur));
+      const m = kids.find((k) => k.name.toLowerCase() === parts[i].toLowerCase());
+      if (!m) return null;
+      cur = m.path;
+    }
+    return cur;
+  }
+  private async getRec(path: string): Promise<Rec | undefined> {
+    const n = norm(path);
+    const exact = await this.p<Rec | undefined>(this.tx('readonly').get(n));
+    if (exact) return exact;                                   // точное совпадение (правильный регистр) — быстрый путь
+    const c = await this.canonical(n);                         // иначе резолвим регистронезависимо
+    return c && c !== n ? await this.p<Rec | undefined>(this.tx('readonly').get(c)) : undefined;
+  }
   async readFile(path: string): Promise<Uint8Array | null> {
-    const r = await this.p<Rec | undefined>(this.tx('readonly').get(norm(path)));
-    return r?.data ?? null;
+    return (await this.getRec(path))?.data ?? null;
   }
   async readText(path: string): Promise<string | null> {
     const d = await this.readFile(path);
     return d ? new TextDecoder().decode(d) : null;
   }
   async stat(path: string): Promise<Entry | null> {
-    const r = await this.p<Rec | undefined>(this.tx('readonly').get(norm(path)));
+    const r = await this.getRec(path);
     return r ? { path: r.path, name: r.name, type: r.type, size: r.data?.length ?? 0 } : null;
   }
   async readdir(path: string): Promise<Entry[]> {
-    const idx = this.tx('readonly').index('parent');
-    const recs = await this.p<Rec[]>(idx.getAll(norm(path)));
+    const n = norm(path);
+    const exact = n === 'C:' || !!(await this.p<Rec | undefined>(this.tx('readonly').get(n)));
+    const dirPath = exact ? n : ((await this.canonical(n)) ?? n);   // регистронезависимо
+    const recs = await this.p<Rec[]>(this.tx('readonly').index('parent').getAll(dirPath));
     return recs
       .map((r) => ({ path: r.path, name: r.name, type: r.type, size: r.data?.length ?? 0 }))
       .sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1));

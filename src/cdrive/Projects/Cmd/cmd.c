@@ -70,7 +70,10 @@ void process_line(void) {
     else if (!strcasecmp(line, "cd") || !strcasecmp(line, "chdir")) {
         if (!arg[0] || !strcmp(arg, ".")) { w(g_out, g_cwd); w(g_out, "\r\n"); }
         else if (!strcmp(arg, "..")) { char *s = strrchr(g_cwd, '\\'); if (s && s > g_cwd + 2) *s = 0; else strcpy(g_cwd, "C:\\"); }
-        else { resolve(arg, p); strcpy(g_cwd, p); }
+        else if (!strcmp(arg, "\\") || !strcmp(arg, "/")) { strcpy(g_cwd, "C:\\"); }   /* в корень диска */
+        else { resolve(arg, p); vfs(2, p);                       /* op 2: канонический путь папки (регистронезависимо) или "" */
+               if (g_buf[0]) strcpy(g_cwd, g_buf);
+               else { w(g_out, "The system cannot find the path specified.\r\n"); } }
     }
     else {                                                              /* не встроенная -> искать .wasm в cwd / C:\Windows\System32 */
         resolve(line, p);
