@@ -9,13 +9,7 @@
  */
 import { preprocess } from './cpp';
 import { stubEnv } from '../win32/wasm-env';
-import windowsH from '../../tools/lcc/include/windows.h?raw';
-import stringH from '../../tools/lcc/include/string.h?raw';
-import guiWindowsH from '../../tools/lcc/include-gui/windows.h?raw';
 import libcExtra from '../../tools/lcc/libc-extra.c?raw';
-
-const HEADERS = new Map<string, string>([['windows.h', windowsH], ['string.h', stringH]]);
-const GUI_HEADERS = new Map<string, string>([['windows.h', guiWindowsH]]);   // GUI: Win32-окна/GDI
 
 /* libc от lcc (lib/wasm/libc.c) + её wasm-заголовки — бандлятся Vite через ?raw.
  * libc.c реализует printf/malloc/string/stdio поверх __read/__write/__exit. */
@@ -73,39 +67,6 @@ function runRcc(bytes: ArrayBuffer, source: string): { wasm: Uint8Array; stderr:
   return { wasm: new Uint8Array(out), stderr: new TextDecoder().decode(new Uint8Array(err)), code };
 }
 
-/* C89-исходник -> { wasm, stderr }. Бросает при ошибке cpp или rcc. */
-export async function compileC(source: string, extraHeaders?: Map<string, string>): Promise<{ wasm: Uint8Array; stderr: string }> {
-  const includes = new Map(HEADERS);
-  if (extraHeaders) for (const [k, v] of extraHeaders) includes.set(k, v);
-  let cppErr = '';
-  const pp = preprocess(source, { includes, onError: (m) => { cppErr += m + '\n'; } });
-  if (cppErr) throw new Error(cppErr.trim());
-  const { wasm, stderr, code } = runRcc(await loadRcc(), pp);
-  if (code !== 0 || wasm.length === 0) throw new Error('rcc failed (code ' + code + '):\n' + (stderr || '(no output)'));
-  return { wasm, stderr };
-}
-
-/* консольная C89-программа -> wasm: амальгама libc.c + исходник (printf/malloc/string).
- * Импортирует только __read/__write/__exit. Бросает при ошибке cpp/rcc. */
-export async function compileConsole(source: string): Promise<{ wasm: Uint8Array; stderr: string }> {
-  let cppErr = '';
-  const pp = preprocess(LIBC + '\n' + source, { includes: WASM_HEADERS, onError: (m) => { cppErr += m + '\n'; } });
-  if (cppErr) throw new Error(cppErr.trim());
-  const { wasm, stderr, code } = runRcc(await loadRcc(), pp);
-  if (code !== 0 || wasm.length === 0) throw new Error('rcc failed (code ' + code + '):\n' + (stderr || '(no output)'));
-  return { wasm, stderr };
-}
-
-/* Win32-GUI C89-программа -> wasm (только Win32-импорты, без libc — окна/GDI идут в env-фасад) */
-export async function compileGui(source: string): Promise<{ wasm: Uint8Array; stderr: string }> {
-  let cppErr = '';
-  const pp = preprocess(source, { includes: GUI_HEADERS, onError: (m) => { cppErr += m + '\n'; } });
-  if (cppErr) throw new Error(cppErr.trim());
-  const { wasm, stderr, code } = runRcc(await loadRcc(), pp);
-  if (code !== 0 || wasm.length === 0) throw new Error('rcc failed (code ' + code + '):\n' + (stderr || '(no output)'));
-  return { wasm, stderr };
-}
-
 /* собрать ПРОЕКТ (несколько .c + libc, фасадные заголовки) в браузере — как build-cdrive под node.
  * sources: тексты .c в порядке ClCompile; localHeaders: локальные .h проекта (имя -> текст из VFS). */
 export async function compileProject(sources: string[], localHeaders?: Map<string, string>): Promise<{ wasm: Uint8Array; stderr: string }> {
@@ -121,18 +82,4 @@ export async function compileProject(sources: string[], localHeaders?: Map<strin
   const { wasm, stderr, code } = runRcc(await loadRcc(), pp);
   if (code !== 0 || wasm.length === 0) throw new Error('rcc failed (code ' + code + '):\n' + (stderr || '(no output)'));
   return { wasm, stderr };
-}
-
-/* запустить консольный модуль: __write -> write(), __read=EOF, __exit -> возврат кода */
-export function runConsole(wasm: Uint8Array, write: (s: string) => void): number {
-  let mem: WebAssembly.Memory;
-  const env: Record<string, unknown> = {
-    __read: () => 0,
-    __write: (fd: number, ptr: number, len: number) => { const b = new Uint8Array(mem.buffer, ptr, len); let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(b[i]); write(fd === 2 ? s : s.replace(/\r?\n/g, '\r\n')); return len; },
-    __exit: (c: number) => { throw { __exit: c }; },
-  };
-  const inst = new WebAssembly.Instance(new WebAssembly.Module(wasm as BufferSource), { env: stubEnv(env) });
-  mem = (inst.exports as { memory: WebAssembly.Memory }).memory;
-  try { return ((inst.exports as { main: CallableFunction }).main() as number) | 0; }
-  catch (e) { if ((e as { __exit?: number }).__exit === undefined) throw e; return (e as { __exit: number }).__exit; }
 }
