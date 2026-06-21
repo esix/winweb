@@ -4,6 +4,10 @@ A tiny Windows 9x–style desktop that runs **real Win32 C applications** compil
 
 🖥️ **[Live demo](https://esix.github.io/demo/winweb/)** · 📝 **[Write-up](https://esix.github.io/2026/06/21/winweb/)**
 
+https://github.com/user-attachments/assets/c8499dd4-ed28-451d-a0f8-1dfafb3dc5f8
+
+*Opening Minesweeper, then opening a program's source, compiling a hello-world and running it — all in the browser.*
+
 ## What's inside
 
 Every program is real Win32 C (written with `WinMain` / `RegisterClass` / a message loop / GDI), compiled to standalone wasm:
