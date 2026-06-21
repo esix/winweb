@@ -116,7 +116,7 @@ async function launchNotepad(e: Entry): Promise<void> {
 
 /* двойной клик по файлу: .wasm -> запуск из рантайма, иначе -> Блокнот */
 function openEntry(e: Entry): void {
-  if (e.name.toLowerCase().endsWith('.wasm')) void execWasmFile(e.path, '', null);   // GUI -> окно; консольный -> новая консоль
+  if (e.name.toLowerCase().endsWith('.wasm')) void execWasmFile(e.path, '', 'C:\\', null);   // GUI -> окно; консольный -> новая консоль
   else void launchNotepad(e);
 }
 
@@ -132,14 +132,13 @@ async function launchCmd(): Promise<void> {
   const bytes = await (await fetch(`/cdrive/Program%20Files/cmd/cmd.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
   await launchLccCmd(wm, host, vfs, bytes, {
     launch: (p) => { void launchTarget(p); },
-    cc: (p, con) => (host as unknown as { ccStart: (path: string, c: number) => void }).ccStart(p, con),
-    exec: (wasmPath, args, con) => { void execWasmFile(wasmPath, args, con); },   // cmd нашёл .wasm (cwd/System32) -> запустить
+    exec: (wasmPath, args, cwd, con) => { void execWasmFile(wasmPath, args, cwd, con); },   // cmd нашёл .wasm (cwd/System32) -> запустить
   });
 }
 
 /* запустить .wasm из VFS: GUI (экспорт WinMain) -> окно; консольный (экспорт main) -> в консоли con
    (con == null -> открыть НОВУЮ консоль, напр. при двойном клике в Проводнике на консольный инструмент). */
-async function execWasmFile(wasmPath: string, args: string, con: number | null): Promise<void> {
+async function execWasmFile(wasmPath: string, args: string, cwd: string, con: number | null): Promise<void> {
   const bytes = await vfs.readFile(wasmPath);
   if (!bytes) return;
   const mod = await WebAssembly.compile(bytes as BufferSource);
@@ -149,24 +148,33 @@ async function execWasmFile(wasmPath: string, args: string, con: number | null):
     const h = host as unknown as { conOpen: () => number; conTitle: (i: number, t: string) => void };
     let conId = con;
     if (conId == null) { conId = h.conOpen(); h.conTitle(conId, wasmPath.split('\\').pop()?.replace(/\.wasm$/i, '') ?? 'console'); }
-    await launchConsoleTool(bytes, args, conId);
+    await launchConsoleTool(bytes, args, cwd, conId);
   }
 }
 
-/* консольный инструмент C:\Windows\System32\*.wasm (msbuild и т.п.): тонкий wasm, вызывающий winweb_* в JS.
-   Получает аргументы (winweb_args) + id консоли (winweb_stdout), весь stdout (__write) идёт в эту консоль. */
-async function launchConsoleTool(bytes: Uint8Array, args: string, con: number): Promise<void> {
-  const cw = (s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
+/* путь arg относительно cwd (абсолютный C:\... — как есть) */
+function resolveCwd(arg: string, cwd: string): string {
+  const a = arg.trim();
+  if (/^[A-Za-z]:/.test(a)) return a;
+  return (cwd.endsWith('\\') ? cwd : cwd + '\\') + a;
+}
+const conWrite = (con: number, s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
+
+/* консольный инструмент C:\Windows\System32\*.wasm (msbuild, cc): тонкий wasm, зовущий winweb_* в JS.
+   Получает аргументы (winweb_args), cwd (winweb_cwd), id консоли (winweb_stdout); stdout (__write) -> эта консоль. */
+async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, con: number): Promise<void> {
   let mem: WebAssembly.Memory;
   const u8 = () => new Uint8Array(mem.buffer);
   const rdA = (p: number) => { const b = u8(); let s = ''; while (b[p]) s += String.fromCharCode(b[p++]); return s; };
   const wrA = (p: number, s: string, max: number) => { const b = u8(); let i = 0; for (; i < s.length && i < max - 1; i++) b[p + i] = s.charCodeAt(i) & 255; b[p + i] = 0; return i; };
   const env: Record<string, unknown> = {
     winweb_args: (buf: number, max: number) => wrA(buf, args, max),
+    winweb_cwd: (buf: number, max: number) => wrA(buf, cwd, max),
     winweb_stdout: () => con,
-    winweb_msbuild: (argsPtr: number, c: number) => { void msbuildTool(rdA(argsPtr), c); return 0; },
+    winweb_msbuild: (argsPtr: number, c: number) => { void msbuildTool(rdA(argsPtr), cwd, c); return 0; },
+    winweb_cc: (argsPtr: number, c: number) => { ccTool(rdA(argsPtr), cwd, c); return 0; },
     __read: () => 0,
-    __write: (_fd: number, ptr: number, len: number) => { const b = new Uint8Array(mem.buffer, ptr, len); let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(b[i]); cw(s.replace(/\r?\n/g, '\r\n')); return len; },
+    __write: (_fd: number, ptr: number, len: number) => { const b = new Uint8Array(mem.buffer, ptr, len); let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(b[i]); conWrite(con, s.replace(/\r?\n/g, '\r\n')); return len; },
     __exit: () => 0,
   };
   const { instance } = await WebAssembly.instantiate(bytes as BufferSource, { env: stubEnv(env) });
@@ -174,15 +182,23 @@ async function launchConsoleTool(bytes: Uint8Array, args: string, con: number): 
   (instance.exports.main as CallableFunction)();
 }
 
-/* логика msbuild (её зовёт msbuild.wasm через winweb_msbuild): собрать проект args, вывод в консоль con */
-async function msbuildTool(args: string, con: number): Promise<void> {
-  const log = (s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
+/* cc.wasm -> winweb_cc: скомпилировать+запустить один C-файл (путь относительно cwd) */
+function ccTool(args: string, cwd: string, con: number): void {
+  const a = args.trim();
+  if (!a) { conWrite(con, 'cc: usage: cc <file.c>\r\n'); return; }
+  (host as unknown as { ccStart: (path: string, c: number) => void }).ccStart(resolveCwd(a, cwd), con);
+}
+
+/* msbuild.wasm -> winweb_msbuild: собрать проект args (относительно cwd / C:\Projects), вывод в con */
+async function msbuildTool(args: string, cwd: string, con: number): Promise<void> {
+  const log = (s: string) => conWrite(con, s);
   const a = args.trim();
   if (!a) { log('MSBuild: usage: msbuild <project>   (e.g. msbuild Hello)\r\n'); return; }
-  let dir = a;
-  const ents = await vfs.readdir(dir).catch(() => [] as Entry[]);
-  if (!ents.some((e) => e.name.toLowerCase().endsWith('.vcxproj'))) dir = `C:\\Projects\\${a.replace(/\\+$/, '').split('\\').pop()}`;
-  await msbuildAndRun(dir, log);
+  for (const dir of [resolveCwd(a, cwd), a, `C:\\Projects\\${a.replace(/\\+$/, '').split('\\').pop()}`]) {
+    const ents = await vfs.readdir(dir).catch(() => [] as Entry[]);
+    if (ents.some((e) => e.name.toLowerCase().endsWith('.vcxproj'))) { await msbuildAndRun(dir, log); return; }
+  }
+  log(`MSBuild: project not found: ${a}\r\n`);
 }
 
 /* запустить lcc-GUI-приложение (standalone-модуль, экспортирует WinMain) против полного Win32-фасада */
