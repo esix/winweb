@@ -101,7 +101,7 @@ async function launchNotepad(e: Entry): Promise<void> {
   const text = (await vfs.readText(path)) ?? '';
   const bytes = await (await fetch(`/cdrive/Program%20Files/Notepad/Notepad.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
   const { makeWin32Full } = await import('./cc/win32-full');
-  const { env, io, setInstance } = makeWin32Full(wm, host);
+  const { env, io, setInstance } = makeWin32Full(wm, host, wasmIconUrl(new Uint8Array(bytes)));
   Object.assign(env, {   // мосты winweb (host_*), читают/пишут память lcc-модуля + VFS
     host_launch_text: (buf: number, max: number) => io.wrA(buf, text, max),
     host_launch_path: (buf: number, max: number) => io.wrA(buf, path, max),
@@ -123,7 +123,7 @@ function openEntry(e: Entry): void {
 /* статичный демо-модуль ресурсов (.ico/.bmp из .rc): свой gdi на кучу модуля */
 async function launchIconsdemo(): Promise<void> {
   const bytes = await (await fetch(`/cdrive/Program%20Files/IconsDemo/IconsDemo.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
-  await launchLccGui(await WebAssembly.compile(bytes));   // ресурсы .ico/.bmp грузятся реальным LoadIcon/LoadBitmap из winweb_res_table
+  await launchLccGui(await WebAssembly.compile(bytes), wasmIconUrl(new Uint8Array(bytes)));   // ресурсы .ico/.bmp — реальный LoadIcon/LoadBitmap
 }
 
 /* запуск цели ярлыка: app:* -> встроенный, папка -> Проводник, иначе -> openEntry (.wasm/файл) */
@@ -143,7 +143,7 @@ async function execWasmFile(wasmPath: string, args: string, cwd: string, con: nu
   if (!bytes) return;
   const mod = await WebAssembly.compile(bytes as BufferSource);
   const ex = WebAssembly.Module.exports(mod);
-  if (ex.some((e) => e.name === 'WinMain')) { await launchLccGui(mod); return; }                 // оконное приложение
+  if (ex.some((e) => e.name === 'WinMain')) { await launchLccGui(mod, wasmIconUrl(bytes)); return; }   // оконное приложение
   if (ex.some((e) => e.name === 'main')) {                                                        // консольный инструмент
     const h = host as unknown as { conOpen: () => number; conTitle: (i: number, t: string) => void };
     let conId = con;
@@ -160,6 +160,7 @@ function resolveCwd(arg: string, cwd: string): string {
 }
 const conWrite = (con: number, s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
 const U8D = new TextDecoder(), U8E = new TextEncoder();   // char* в инструментах — UTF-8
+const wasmIconUrl = (bytes: Uint8Array): string | undefined => executableIconUrl(bytes, 'a.wasm') ?? undefined;   // иконка из секции "winweb.ico"
 
 /* консольный инструмент C:\Windows\System32\*.wasm (msbuild, cc): тонкий wasm, зовущий winweb_* в JS.
    Получает аргументы (winweb_args), cwd (winweb_cwd), id консоли (winweb_stdout); stdout (__write) -> эта консоль. */
@@ -213,9 +214,9 @@ async function msbuildTool(args: string, cwd: string, con: number): Promise<void
 }
 
 /* запустить lcc-GUI-приложение (standalone-модуль, экспортирует WinMain) против полного Win32-фасада */
-async function launchLccGui(mod: WebAssembly.Module): Promise<void> {
+async function launchLccGui(mod: WebAssembly.Module, iconUrl?: string): Promise<void> {
   const { makeWin32Full } = await import('./cc/win32-full');
-  const { env, setInstance } = makeWin32Full(wm, host);
+  const { env, setInstance } = makeWin32Full(wm, host, iconUrl);
   const instance = await WebAssembly.instantiate(mod, { env: stubEnv(env) });
   setInstance(instance);
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
@@ -234,7 +235,7 @@ async function msbuildBuild(dir: string, log: (s: string) => void): Promise<numb
 };
 async function launchMinesweeper(): Promise<void> {
   const bytes = await (await fetch(`/cdrive/Program%20Files/Minesweeper/Minesweeper.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
-  await launchLccGui(await WebAssembly.compile(bytes));
+  await launchLccGui(await WebAssembly.compile(bytes), wasmIconUrl(new Uint8Array(bytes)));
 }
 
 async function launchTarget(target: string): Promise<void> {
@@ -250,13 +251,24 @@ async function launchTarget(target: string): Promise<void> {
   openEntry({ path: target, name, type: 'file', size: st?.size ?? 0 });
 }
 
-/* иконка из самого исполняемого файла цели (для стола / Пуска / Проводника); null если её нет */
+/* app:-ярлыки -> их .wasm (для иконки) */
+const APP_WASM: Record<string, string> = {
+  minesweeper: 'C:\\Program Files\\Minesweeper\\Minesweeper.wasm',
+  iconsdemo: 'C:\\Program Files\\IconsDemo\\IconsDemo.wasm',
+  cmd: 'C:\\Program Files\\cmd\\cmd.wasm',
+};
+/* иконка из самого исполняемого файла цели (для стола / Пуска / Проводника); null если её нет.
+   Фетчим обслуживаемый файл (свежая сборка), а не возможно-устаревший VFS. */
 async function targetIconUrl(target: string): Promise<string | null> {
-  if (target.startsWith('app:')) return null;
-  const st = await vfs.stat(target);
-  if (!st || st.type !== 'file') return null;
-  const bytes = await vfs.readFile(target);
-  return bytes ? executableIconUrl(bytes, target) : null;
+  let path = target;
+  if (target.startsWith('app:')) { path = APP_WASM[target.slice(4)] ?? ''; if (!path) return null; }
+  const lower = path.toLowerCase();
+  if (!lower.endsWith('.wasm') && !lower.endsWith('.exe')) return null;
+  const url = '/cdrive/' + path.replace(/^C:\\/, '').split('\\').map(encodeURIComponent).join('/');
+  try {
+    const bytes = new Uint8Array(await (await fetch(url, { cache: 'no-store' })).arrayBuffer());
+    return executableIconUrl(bytes, path);
+  } catch { return null; }
 }
 function setIconImg(host: HTMLElement, url: string, cls: string): void {
   const img = document.createElement('img'); img.className = cls; img.src = url;

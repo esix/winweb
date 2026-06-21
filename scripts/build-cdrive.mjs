@@ -48,6 +48,8 @@ for (const dir of readdirSync(PROJECTS)) {
   mkdirSync(join(ROOT, dirname(out)), { recursive: true });
   try {
     const { wasm } = buildApp(name, { sources, libc: true, out });
-    console.log(`${name}: ${wasm.length} bytes -> ${isConsole ? 'System32/' + name + '.wasm' : 'Program Files/' + name + '/' + name + '.wasm'} (valid: ${WebAssembly.validate(wasm)})`);
+    const ico = join(pdir, 'app.ico');   // встроить иконку приложения секцией "winweb.ico" (оболочка/заголовок)
+    if (existsSync(ico)) execFileSync('node', [join(ROOT, 'scripts', 'embed-wasm-icon.mjs'), join(ROOT, out), ico], { stdio: 'pipe' });
+    console.log(`${name}: ${wasm.length} bytes -> ${isConsole ? 'System32/' + name + '.wasm' : 'Program Files/' + name + '/' + name + '.wasm'}${existsSync(ico) ? ' +icon' : ''} (valid: ${WebAssembly.validate(wasm)})`);
   } catch (e) { console.error(`${name}: ${e.message.split('\n').slice(0, 6).join('\n')}`); process.exit(1); }
 }

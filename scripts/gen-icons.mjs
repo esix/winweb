@@ -63,9 +63,27 @@ function ico32(rgba) {                                       // одиночна
   return b;                                                                                   // AND-маска = нули (используем альфу)
 }
 
+function doc() {                                            // документ (Notepad): белый лист + строки
+  const buf = blank();
+  for (let y = 4; y < 28; y++) for (let x = 7; x < 25; x++) setpx(buf, x, y, 255, 255, 255, 255);
+  for (let y = 4; y < 28; y++) { setpx(buf, 7, y, 90, 90, 90, 255); setpx(buf, 24, y, 90, 90, 90, 255); }
+  for (let x = 7; x < 25; x++) { setpx(buf, x, 4, 90, 90, 90, 255); setpx(buf, x, 27, 90, 90, 90, 255); }
+  for (let i = 0; i < 5; i++) for (let x = 10; x < 22; x++) setpx(buf, x, 9 + i * 4, 60, 90, 200, 255);
+  return buf;
+}
+function gear() {                                           // шестерёнка (msbuild/cc — инструменты)
+  const buf = blank();
+  for (let a = 0; a < 8; a++) { const ang = a * Math.PI / 4; for (let r = 9; r <= 14; r++) { const x = Math.round(15.5 + Math.cos(ang) * r), y = Math.round(15.5 + Math.sin(ang) * r); for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const xx = x + ox, yy = y + oy; if (xx >= 0 && xx < SZ && yy >= 0 && yy < SZ) setpx(buf, xx, yy, 120, 120, 130, 255); } } }
+  for (let y = 0; y < SZ; y++) for (let x = 0; x < SZ; x++) { const d = (x - 15.5) ** 2 + (y - 15.5) ** 2; if (d <= 10 * 10) setpx(buf, x, y, 150, 150, 160, 255); if (d <= 4 * 4) setpx(buf, x, y, 60, 60, 70, 255); }
+  return buf;
+}
+
 mkdirSync('src/cdrive/Projects/IconsDemo/res', { recursive: true });
 writeFileSync('src/cdrive/Projects/IconsDemo/res/disc.ico', ico32(disc(245, 200, 30)));
 writeFileSync('src/cdrive/Projects/IconsDemo/res/diamond.ico', ico32(diamond(220, 40, 40)));
 writeFileSync('src/cdrive/Projects/IconsDemo/res/ring.ico', ico32(ring(40, 170, 70)));
 writeFileSync('src/cdrive/Projects/IconsDemo/res/smiley.bmp', bmp24(smiley()));
-console.log('gen-icons: wrote iconsdemo res (.ico/.bmp)');
+/* app.ico в каждом проекте -> build-cdrive встраивает её секцией "winweb.ico" (иконка в заголовке/столе/Пуске) */
+const appIcons = { Hello: appwin(), Minesweeper: mine(), Cmd: term(), Notepad: doc(), IconsDemo: disc(245, 200, 30), msbuild: gear(), cc: gear() };
+for (const [proj, buf] of Object.entries(appIcons)) writeFileSync(`src/cdrive/Projects/${proj}/app.ico`, ico32(buf));
+console.log('gen-icons: wrote iconsdemo res + app.ico for ' + Object.keys(appIcons).join('/'));

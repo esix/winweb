@@ -18,7 +18,7 @@ const CW_USEDEFAULT = 0x80000000 | 0;   // -2147483648
 
 interface Win32Io { rdA: (p: number) => string; wrA: (p: number, s: string, max: number) => number; }
 
-export function makeWin32Full(wm: WindowManager, host: WinwebHost): { env: Record<string, unknown>; setInstance: (i: WebAssembly.Instance) => void; io: Win32Io } {
+export function makeWin32Full(wm: WindowManager, host: WinwebHost, iconUrl?: string): { env: Record<string, unknown>; setInstance: (i: WebAssembly.Instance) => void; io: Win32Io } {
   let mem: WebAssembly.Memory | null = null;
   let table: WebAssembly.Table | null = null;
   let inst: WebAssembly.Instance | null = null;
@@ -57,6 +57,7 @@ export function makeWin32Full(wm: WindowManager, host: WinwebHost): { env: Recor
       wm.bindDispatch((id, m, a, b) => { callWndProc(id, m, a, b); });
       const px = (x === CW_USEDEFAULT || x < 0) ? 90 : x, py = (y === CW_USEDEFAULT || y < 0) ? 80 : y;
       const id = wm.create(rdA(titleP) || clsName || 'Window', px, py, w > 0 ? w : 320, h > 0 ? h : 240);
+      if (iconUrl) wm.setIcon(id, iconUrl);   // иконка приложения в заголовке (из секции "winweb.ico")
       callWndProc(id, WM_CREATE, 0, 0);   // как настоящий CreateWindow -> синхронный WM_CREATE (notepad создаёт EDIT тут)
       return id;
     },
