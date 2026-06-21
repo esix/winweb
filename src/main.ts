@@ -159,14 +159,15 @@ function resolveCwd(arg: string, cwd: string): string {
   return (cwd.endsWith('\\') ? cwd : cwd + '\\') + a;
 }
 const conWrite = (con: number, s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
+const U8D = new TextDecoder(), U8E = new TextEncoder();   // char* в инструментах — UTF-8
 
 /* консольный инструмент C:\Windows\System32\*.wasm (msbuild, cc): тонкий wasm, зовущий winweb_* в JS.
    Получает аргументы (winweb_args), cwd (winweb_cwd), id консоли (winweb_stdout); stdout (__write) -> эта консоль. */
 async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, con: number): Promise<void> {
   let mem: WebAssembly.Memory;
   const u8 = () => new Uint8Array(mem.buffer);
-  const rdA = (p: number) => { const b = u8(); let s = ''; while (b[p]) s += String.fromCharCode(b[p++]); return s; };
-  const wrA = (p: number, s: string, max: number) => { const b = u8(); let i = 0; for (; i < s.length && i < max - 1; i++) b[p + i] = s.charCodeAt(i) & 255; b[p + i] = 0; return i; };
+  const rdA = (p: number) => { const b = u8(); let e = p; while (b[e]) e++; return U8D.decode(b.subarray(p, e)); };
+  const wrA = (p: number, s: string, max: number) => { const b = u8(), enc = U8E.encode(s); let i = 0; for (; i < enc.length && i < max - 1; i++) b[p + i] = enc[i]; b[p + i] = 0; return i; };
   const env: Record<string, unknown> = {
     winweb_args: (buf: number, max: number) => wrA(buf, args, max),
     winweb_cwd: (buf: number, max: number) => wrA(buf, cwd, max),
@@ -174,7 +175,7 @@ async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, c
     winweb_msbuild: (argsPtr: number, c: number) => { void msbuildTool(rdA(argsPtr), cwd, c); return 0; },
     winweb_cc: (argsPtr: number, c: number) => { void ccTool(rdA(argsPtr), cwd, c); return 0; },
     __read: () => 0,
-    __write: (_fd: number, ptr: number, len: number) => { const b = new Uint8Array(mem.buffer, ptr, len); let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(b[i]); conWrite(con, s.replace(/\r?\n/g, '\r\n')); return len; },
+    __write: (_fd: number, ptr: number, len: number) => { conWrite(con, U8D.decode(u8().subarray(ptr, ptr + len)).replace(/\r?\n/g, '\r\n')); return len; },
     __exit: () => 0,
   };
   const { instance } = await WebAssembly.instantiate(bytes as BufferSource, { env: stubEnv(env) });

@@ -66,16 +66,16 @@ export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vf
 
   const u8 = () => new Uint8Array(mem.buffer);
   const dv = () => new DataView(mem.buffer);
-  const rd = (p: number) => { const b = u8(); let s = ''; while (b[p]) s += String.fromCharCode(b[p++]); return s; };
-  const writeStr = (p: number, s: string, max: number) => { const b = u8(); let i = 0; for (; i < s.length && i < max - 1; i++) b[p + i] = s.charCodeAt(i) & 255; b[p + i] = 0; return i; };
+  const TD = new TextDecoder(), TE = new TextEncoder();   // char* в cmd/инструментах — UTF-8
+  const rd = (p: number) => { const b = u8(); let e = p; while (b[e]) e++; return TD.decode(b.subarray(p, e)); };
+  const writeStr = (p: number, s: string, max: number) => { const b = u8(), enc = TE.encode(s); let i = 0; for (; i < enc.length && i < max - 1; i++) b[p + i] = enc[i]; b[p + i] = 0; return i; };
 
   const env: Record<string, unknown> = {
     AllocConsole: () => 1,
     SetConsoleTitleA: (p: number) => { host.conTitle(conId, rd(p)); return 1; },
     GetStdHandle: () => conId,
     WriteConsoleA: (h: number, buf: number, len: number, writtenPtr: number) => {
-      const b = u8(); let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(b[buf + i]);
-      host.conWrite(h, s);
+      host.conWrite(h, TD.decode(u8().subarray(buf, buf + len)));   // UTF-8
       if (writtenPtr) dv().setInt32(writtenPtr, len, true);
       return 1;
     },
