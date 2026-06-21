@@ -1,5 +1,5 @@
 {
-  "version": 45,
+  "version": 46,
   "entries": [
     {
       "path": "C:",
@@ -22,7 +22,8 @@
       "path": "C:\\Projects\\Cmd\\app.ico",
       "type": "file",
       "url": "/cdrive/Projects/Cmd/app.ico",
-      "exec": false
+      "exec": false,
+      "v": "8f61c3160965"
     },
     {
       "path": "C:\\Projects\\Cmd\\cmd.c",
@@ -42,7 +43,8 @@
       "path": "C:\\Projects\\Hello\\app.ico",
       "type": "file",
       "url": "/cdrive/Projects/Hello/app.ico",
-      "exec": false
+      "exec": false,
+      "v": "86f2f5172af8"
     },
     {
       "path": "C:\\Projects\\Hello\\hello.c",
@@ -62,7 +64,8 @@
       "path": "C:\\Projects\\IconsDemo\\app.ico",
       "type": "file",
       "url": "/cdrive/Projects/IconsDemo/app.ico",
-      "exec": false
+      "exec": false,
+      "v": "961106409733"
     },
     {
       "path": "C:\\Projects\\IconsDemo\\iconsdemo.c",
@@ -82,25 +85,29 @@
       "path": "C:\\Projects\\IconsDemo\\res\\diamond.ico",
       "type": "file",
       "url": "/cdrive/Projects/IconsDemo/res/diamond.ico",
-      "exec": false
+      "exec": false,
+      "v": "9d27d7c583b1"
     },
     {
       "path": "C:\\Projects\\IconsDemo\\res\\disc.ico",
       "type": "file",
       "url": "/cdrive/Projects/IconsDemo/res/disc.ico",
-      "exec": false
+      "exec": false,
+      "v": "961106409733"
     },
     {
       "path": "C:\\Projects\\IconsDemo\\res\\ring.ico",
       "type": "file",
       "url": "/cdrive/Projects/IconsDemo/res/ring.ico",
-      "exec": false
+      "exec": false,
+      "v": "196b96111069"
     },
     {
       "path": "C:\\Projects\\IconsDemo\\res\\smiley.bmp",
       "type": "file",
       "url": "/cdrive/Projects/IconsDemo/res/smiley.bmp",
-      "exec": false
+      "exec": false,
+      "v": "061899b06c3f"
     },
     {
       "path": "C:\\Projects\\Minesweeper",
@@ -115,7 +122,8 @@
       "path": "C:\\Projects\\Minesweeper\\app.ico",
       "type": "file",
       "url": "/cdrive/Projects/Minesweeper/app.ico",
-      "exec": false
+      "exec": false,
+      "v": "5c7c0b545732"
     },
     {
       "path": "C:\\Projects\\Minesweeper\\game.c",
@@ -146,7 +154,8 @@
       "path": "C:\\Projects\\Minesweeper\\mine.ico",
       "type": "file",
       "url": "/cdrive/Projects/Minesweeper/mine.ico",
-      "exec": false
+      "exec": false,
+      "v": "5c7c0b545732"
     },
     {
       "path": "C:\\Projects\\Minesweeper\\minesweeper.c",
@@ -216,7 +225,8 @@
       "path": "C:\\Projects\\Notepad\\app.ico",
       "type": "file",
       "url": "/cdrive/Projects/Notepad/app.ico",
-      "exec": false
+      "exec": false,
+      "v": "a80eaf03ce1f"
     },
     {
       "path": "C:\\Projects\\Notepad\\notepad.c",
@@ -231,7 +241,8 @@
       "path": "C:\\Projects\\cc\\app.ico",
       "type": "file",
       "url": "/cdrive/Projects/cc/app.ico",
-      "exec": false
+      "exec": false,
+      "v": "585c895bee22"
     },
     {
       "path": "C:\\Projects\\cc\\cc.c",
@@ -298,7 +309,8 @@
       "path": "C:\\Projects\\msbuild\\app.ico",
       "type": "file",
       "url": "/cdrive/Projects/msbuild/app.ico",
-      "exec": false
+      "exec": false,
+      "v": "585c895bee22"
     },
     {
       "path": "C:\\Projects\\msbuild\\msbuild.c",
@@ -338,7 +350,8 @@
       "path": "C:\\Projects\\winmine.exe",
       "type": "file",
       "url": "/cdrive/Projects/winmine.exe",
-      "exec": true
+      "exec": true,
+      "v": "d88da16e70d5"
     },
     {
       "path": "C:\\Projects\\winpaint.c",
@@ -442,7 +455,8 @@
       "path": "C:\\Program Files\\Hello\\Hello.wasm",
       "type": "file",
       "url": "/cdrive/Program%20Files/Hello/Hello.wasm",
-      "exec": true
+      "exec": true,
+      "v": "0b941793b90b"
     },
     {
       "path": "C:\\Program Files\\IconsDemo",
@@ -452,7 +466,8 @@
       "path": "C:\\Program Files\\IconsDemo\\IconsDemo.wasm",
       "type": "file",
       "url": "/cdrive/Program%20Files/IconsDemo/IconsDemo.wasm",
-      "exec": true
+      "exec": true,
+      "v": "512027ff61eb"
     },
     {
       "path": "C:\\Program Files\\Minesweeper",
@@ -462,7 +477,8 @@
       "path": "C:\\Program Files\\Minesweeper\\Minesweeper.wasm",
       "type": "file",
       "url": "/cdrive/Program%20Files/Minesweeper/Minesweeper.wasm",
-      "exec": true
+      "exec": true,
+      "v": "7b86d4b80b79"
     },
     {
       "path": "C:\\Program Files\\cmd",
@@ -472,49 +488,57 @@
       "path": "C:\\Program Files\\cmd\\cmd.wasm",
       "type": "file",
       "url": "/cdrive/Program%20Files/cmd/cmd.wasm",
-      "exec": true
+      "exec": true,
+      "v": "06f4e2920380"
     },
     {
       "path": "C:\\Windows\\System32\\cc.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/cc.wasm",
-      "exec": true
+      "exec": true,
+      "v": "ce2f8203a42d"
     },
     {
       "path": "C:\\Windows\\System32\\gdi32.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/gdi32.wasm",
-      "exec": true
+      "exec": true,
+      "v": "39dc4418c684"
     },
     {
       "path": "C:\\Windows\\System32\\greet.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/greet.wasm",
-      "exec": true
+      "exec": true,
+      "v": "d96c4a3837f4"
     },
     {
       "path": "C:\\Windows\\System32\\kernel32.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/kernel32.wasm",
-      "exec": true
+      "exec": true,
+      "v": "d4ecebc40b6c"
     },
     {
       "path": "C:\\Windows\\System32\\msbuild.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/msbuild.wasm",
-      "exec": true
+      "exec": true,
+      "v": "4507383d9e68"
     },
     {
       "path": "C:\\Windows\\System32\\notepad.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/notepad.wasm",
-      "exec": true
+      "exec": true,
+      "v": "7515792128b0"
     },
     {
       "path": "C:\\Windows\\System32\\user32.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/user32.wasm",
-      "exec": true
+      "exec": true,
+      "v": "9f0ce8903e62"
     }
   ]
 }

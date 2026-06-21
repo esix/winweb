@@ -6,6 +6,7 @@
  *   - version растёт ТОЛЬКО при изменении содержимого (иначе VFS не пере-сидит, правки целы).
  */
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, copyFileSync, existsSync } from 'fs';
+import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -19,6 +20,7 @@ const skip = (name) => name === '.DS_Store' || /_res\.c$/.test(name);   // junk 
 const vpath = (rel) => 'C:\\' + rel.replace(/\//g, '\\');
 const vurl = (rel) => '/cdrive/' + rel.split('/').map(encodeURIComponent).join('/');
 const ext = (n) => { const i = n.lastIndexOf('.'); return i < 0 ? '' : n.slice(i).toLowerCase(); };
+const hash = (abs) => createHash('sha1').update(readFileSync(abs)).digest('hex').slice(0, 12);   // содержимое бинаря в запись -> его изменение поднимает version
 
 const entries = [{ path: 'C:', type: 'dir' }];
 function walk(absDir, relDir) {
@@ -29,7 +31,7 @@ function walk(absDir, relDir) {
     else if (TEXT.has(ext(name))) entries.push({ path: vpath(rel), type: 'file', text: readFileSync(abs, 'utf8') });
     else {                                                        // бинарь -> копия в public/cdrive + url
       const dest = join(PUB, rel); mkdirSync(dirname(dest), { recursive: true }); copyFileSync(abs, dest);
-      entries.push({ path: vpath(rel), type: 'file', url: vurl(rel), exec: ext(name) === '.exe' || ext(name) === '.wasm' });
+      entries.push({ path: vpath(rel), type: 'file', url: vurl(rel), exec: ext(name) === '.exe' || ext(name) === '.wasm', v: hash(abs) });
     }
   }
 }
@@ -43,13 +45,13 @@ if (existsSync(PF)) {
     if (!statSync(join(PF, app)).isDirectory()) continue;
     entries.push({ path: `C:\\Program Files\\${app}`, type: 'dir' });
     for (const f of readdirSync(join(PF, app)).sort()) if (f.endsWith('.wasm'))
-      entries.push({ path: `C:\\Program Files\\${app}\\${f}`, type: 'file', url: vurl(`Program Files/${app}/${f}`), exec: true });
+      entries.push({ path: `C:\\Program Files\\${app}\\${f}`, type: 'file', url: vurl(`Program Files/${app}/${f}`), exec: true, v: hash(join(PF, app, f)) });
   }
 }
 /* собранные инструменты (консольные): public/cdrive/Windows/System32/*.wasm */
 const S32 = join(PUB, 'Windows', 'System32');
 if (existsSync(S32)) for (const f of readdirSync(S32).sort()) if (f.endsWith('.wasm'))
-  entries.push({ path: `C:\\Windows\\System32\\${f}`, type: 'file', url: vurl(`Windows/System32/${f}`), exec: true });
+  entries.push({ path: `C:\\Windows\\System32\\${f}`, type: 'file', url: vurl(`Windows/System32/${f}`), exec: true, v: hash(join(S32, f)) });
 
 /* version: +1 только если набор entries изменился (сохраняет правки в VFS между сборками) */
 const out = join(PUB, 'manifest.json');
