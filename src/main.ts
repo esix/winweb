@@ -15,9 +15,10 @@ const host = makeHost(wm);
 (globalThis as unknown as { winwebHost: unknown }).winwebHost = host;
 
 /* --- локальная ФС: открыть + засеять диск C: при первом запуске --- */
+const BASE = import.meta.env.BASE_URL;   // '/' или подпапка деплоя (напр. '/demo/winweb/')
 const vfs = new Vfs();
 await vfs.open();
-await vfs.seed('/cdrive/manifest.json');
+await vfs.seed(BASE + 'cdrive/manifest.json');
 
 /* мост к VFS для консоли (cmd): async-операция -> результат забирается опросом (host_vfs_poll) */
 {
@@ -179,7 +180,7 @@ const DLLS: { name: string; funcs: string[] }[] = [
 const dllBytes: Record<string, ArrayBuffer> = {};
 async function linkDll(env: Record<string, unknown>, dll: { name: string; funcs: string[] }): Promise<Record<string, unknown>> {
   try {
-    if (!dllBytes[dll.name]) { dllBytes[dll.name] = await (await fetch(`/cdrive/Windows/System32/${dll.name}.wasm`, { cache: 'no-store' })).arrayBuffer(); console.info(`[${dll.name}] DLL loaded from C:\\Windows\\System32\\${dll.name}.wasm`); }
+    if (!dllBytes[dll.name]) { dllBytes[dll.name] = await (await fetch(`${BASE}cdrive/Windows/System32/${dll.name}.wasm`, { cache: 'no-store' })).arrayBuffer(); console.info(`[${dll.name}] DLL loaded from C:\\Windows\\System32\\${dll.name}.wasm`); }
     const imports: Record<string, unknown> = {};
     for (const f of dll.funcs) imports['js_' + f] = env[f];                          // .wasm импортит js_<X>
     const exp = (await WebAssembly.instantiate(dllBytes[dll.name], { env: stubEnv(imports) })).instance.exports;
@@ -294,7 +295,7 @@ async function launchTarget(target: string): Promise<void> {
 async function targetIconUrl(target: string): Promise<string | null> {
   const lower = target.toLowerCase();
   if (!lower.endsWith('.wasm') && !lower.endsWith('.exe')) return null;
-  const url = '/cdrive/' + target.replace(/^[A-Za-z]:\\/, '').split('\\').map(encodeURIComponent).join('/');
+  const url = BASE + 'cdrive/' + target.replace(/^[A-Za-z]:\\/, '').split('\\').map(encodeURIComponent).join('/');
   try {
     const bytes = new Uint8Array(await (await fetch(url, { cache: 'no-store' })).arrayBuffer());
     return executableIconUrl(bytes, target);

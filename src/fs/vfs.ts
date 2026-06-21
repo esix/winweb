@@ -97,7 +97,7 @@ export class Vfs {
   }
   /** Засев при первом запуске: качаем манифест и кладём файлы по одному. */
   async seed(manifestUrl: string): Promise<void> {
-    const manifest: Manifest = await (await fetch(`${manifestUrl}?t=${Date.now()}`, { cache: 'no-store' })).json();
+    const manifest: Manifest = await (await fetch(manifestUrl, { cache: 'no-store' })).json();
     const ver = manifest.version ?? 1;
     if ((await this.seedVersion()) >= ver) return;
     for (const e of manifest.entries) {
@@ -106,8 +106,8 @@ export class Vfs {
       } else if (e.text != null) {
         await this.writeFile(e.path, new TextEncoder().encode(e.text));
       } else if (e.url) {
-        const bust = `${e.url}${e.url.includes('?') ? '&' : '?'}v=${ver}`;   // версия в URL -> гарантированный обход кэша
-        const buf = new Uint8Array(await (await fetch(bust, { cache: 'no-store' })).arrayBuffer());
+        const u = import.meta.env.BASE_URL + e.url.replace(/^\//, '');           // base-aware (деплой в подпапку)
+        const buf = new Uint8Array(await (await fetch(u, { cache: 'no-store' })).arrayBuffer());   // no-store достаточно (кэш-бастер не нужен)
         await this.writeFile(e.path, buf);
       }
     }

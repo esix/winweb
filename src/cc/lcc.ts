@@ -43,7 +43,7 @@ const SHIMS = new Map<string, string>([
 
 let rccBytes: ArrayBuffer | null = null;
 async function loadRcc(): Promise<ArrayBuffer> {
-  if (!rccBytes) rccBytes = await (await fetch(`/lcc/rcc.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
+  if (!rccBytes) rccBytes = await (await fetch(`${import.meta.env.BASE_URL}lcc/rcc.wasm`, { cache: 'no-store' })).arrayBuffer();
   return rccBytes;
 }
 
