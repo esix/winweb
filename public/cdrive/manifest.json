@@ -1,5 +1,5 @@
 {
-  "version": 38,
+  "version": 39,
   "entries": [
     {
       "path": "C:",
@@ -274,6 +274,20 @@
       "text": "C:\\Projects  -  your sources and executables.\r\n\r\nOpen a .c file in Notepad, or run a .wasm executable.\r\nCompile a console C program with:  cc demo.c"
     },
     {
+      "path": "C:\\Projects\\user32",
+      "type": "dir"
+    },
+    {
+      "path": "C:\\Projects\\user32\\user32.c",
+      "type": "file",
+      "text": "/* user32.c — winweb \"DLL\": ЗДЕСЬ определены функции USER32 (окна/сообщения).\n * Это настоящий C:\\Windows\\System32\\user32.wasm; приложения импортируют эти функции\n * ОТСЮДА (их exports подставляются в env приложения загрузчиком), а реализация —\n * тонкие трамплины в JS-фасад (js_*). Так показан явный DLL-слой: app -> user32.wasm -> JS. */\n#include <windows.h>\n\nextern ATOM    js_RegisterClass(const WNDCLASS*);\nextern HWND    js_CreateWindowEx(DWORD, LPCTSTR, LPCTSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);\nextern BOOL    js_ShowWindow(HWND, int);\nextern BOOL    js_UpdateWindow(HWND);\nextern BOOL    js_GetMessage(LPMSG, HWND, UINT, UINT);\nextern BOOL    js_TranslateMessage(const MSG*);\nextern LRESULT js_DispatchMessage(const MSG*);\nextern LRESULT js_DefWindowProc(HWND, UINT, WPARAM, LPARAM);\nextern void    js_PostQuitMessage(int);\nextern BOOL    js_InvalidateRect(HWND, const RECT*, BOOL);\nextern BOOL    js_GetClientRect(HWND, LPRECT);\nextern int     js_MessageBox(HWND, LPCTSTR, LPCTSTR, UINT);\nextern int     js_GetSystemMetrics(int);\nextern BOOL    js_DestroyWindow(HWND);\n\nATOM    RegisterClass(const WNDCLASS* wc) { return js_RegisterClass(wc); }\nHWND    CreateWindowEx(DWORD ex, LPCTSTR cls, LPCTSTR name, DWORD style, int x, int y, int w, int h, HWND parent, HMENU menu, HINSTANCE inst, LPVOID param) {\n    return js_CreateWindowEx(ex, cls, name, style, x, y, w, h, parent, menu, inst, param);\n}\nBOOL    ShowWindow(HWND h, int cmd)            { return js_ShowWindow(h, cmd); }\nBOOL    UpdateWindow(HWND h)                   { return js_UpdateWindow(h); }\nBOOL    GetMessage(LPMSG m, HWND h, UINT a, UINT b) { return js_GetMessage(m, h, a, b); }\nBOOL    TranslateMessage(const MSG* m)         { return js_TranslateMessage(m); }\nLRESULT DispatchMessage(const MSG* m)          { return js_DispatchMessage(m); }\nLRESULT DefWindowProc(HWND h, UINT m, WPARAM w, LPARAM l) { return js_DefWindowProc(h, m, w, l); }\nvoid    PostQuitMessage(int code)              { js_PostQuitMessage(code); }\nBOOL    InvalidateRect(HWND h, const RECT* r, BOOL e) { return js_InvalidateRect(h, r, e); }\nBOOL    GetClientRect(HWND h, LPRECT r)        { return js_GetClientRect(h, r); }\nint     MessageBox(HWND h, LPCTSTR t, LPCTSTR c, UINT y) { return js_MessageBox(h, t, c, y); }\nint     GetSystemMetrics(int i)                { return js_GetSystemMetrics(i); }\nBOOL    DestroyWindow(HWND h)                  { return js_DestroyWindow(h); }\n"
+    },
+    {
+      "path": "C:\\Projects\\user32\\user32.vcxproj",
+      "type": "file",
+      "text": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n  <PropertyGroup Label=\"Globals\">\n    <ProjectName>user32</ProjectName>\n    <!-- DLL: библиотека функций USER32 -> C:\\Windows\\System32\\user32.wasm -->\n    <ConfigurationType>DynamicLibrary</ConfigurationType>\n    <SystemTool>true</SystemTool>\n  </PropertyGroup>\n  <ItemGroup>\n    <ClCompile Include=\"user32.c\" />\n  </ItemGroup>\n</Project>\n"
+    },
+    {
       "path": "C:\\Projects\\winhello.c",
       "type": "file",
       "text": "/* winhello.c - a Win32 GUI app compiled in-browser by lcc-wasm:  cc winhello.c\n   #include <windows.h> resolves via the in-browser cpp; strict C89 (decls first). */\n#include <windows.h>\nint WndProc(HWND hwnd, int msg, int wp, int lp){\n  PAINTSTRUCT ps;\n  HDC hdc;\n  if(msg == WM_PAINT){\n    hdc = BeginPaint(hwnd, &ps);\n    TextOut(hdc, 20, 20, \"Hello from compiled C!\", 22);\n    TextOut(hdc, 20, 48, \"Built by lcc-wasm in the browser.\", 33);\n    EndPaint(hwnd, &ps);\n    return 0;\n  }\n  return DefWindowProc(hwnd, msg, wp, lp);\n}\nint main(void){\n  WNDCLASS wc;\n  HWND hwnd;\n  MSG msg;\n  wc.lpfnWndProc = WndProc;\n  wc.lpszClassName = \"WinHello\";\n  RegisterClass(&wc);\n  hwnd = CreateWindow(\"WinHello\", \"Win32 from lcc\", 0, 110, 110, 380, 220, 0, 0, 0, 0);\n  ShowWindow(hwnd, 1);\n  UpdateWindow(hwnd);\n  while(GetMessage(&msg, 0, 0, 0)){ TranslateMessage(&msg); DispatchMessage(&msg); }\n  return 0;\n}"
@@ -434,6 +448,12 @@
       "path": "C:\\Windows\\System32\\notepad.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/notepad.wasm",
+      "exec": true
+    },
+    {
+      "path": "C:\\Windows\\System32\\user32.wasm",
+      "type": "file",
+      "url": "/cdrive/Windows/System32/user32.wasm",
       "exec": true
     }
   ]

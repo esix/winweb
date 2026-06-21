@@ -109,7 +109,7 @@ async function launchNotepadWasm(bytes: Uint8Array, path: string): Promise<void>
     host_prompt: (titleP: number, defP: number, buf: number, max: number) => { const r = window.prompt(io.rdA(titleP), io.rdA(defP)); return r == null ? 0 : io.wrA(buf, r, max); },
     host_load: (edit: number, p: number) => { void (async () => { const t = (await vfs.readText(io.rdA(p))) ?? ''; wm.setWindowText(edit, t); })(); },
   });
-  const { instance } = await WebAssembly.instantiate(bytes as BufferSource, { env: stubEnv(env) });
+  const { instance } = await WebAssembly.instantiate(bytes as BufferSource, { env: stubEnv(await linkUser32(env)) });
   setInstance(instance);
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
 }
@@ -171,6 +171,22 @@ const conWrite = (con: number, s: string) => (host as unknown as { conWrite: (i:
 const U8D = new TextDecoder(), U8E = new TextEncoder();   // char* в инструментах — UTF-8
 const wasmIconUrl = (bytes: Uint8Array): string | undefined => executableIconUrl(bytes, 'a.wasm') ?? undefined;   // иконка из секции "winweb.ico"
 
+/* USER32 как настоящий DLL: эти функции окна/сообщений приложение зовёт ИЗ C:\Windows\System32\user32.wasm
+   (его exports подставляются в env приложения), а user32.wasm форвардит их в JS-фасад (js_*). */
+const USER32_FUNCS = ['RegisterClass', 'CreateWindowEx', 'ShowWindow', 'UpdateWindow', 'GetMessage', 'TranslateMessage', 'DispatchMessage', 'DefWindowProc', 'PostQuitMessage', 'InvalidateRect', 'GetClientRect', 'MessageBox', 'GetSystemMetrics', 'DestroyWindow'];
+let user32Bytes: ArrayBuffer | null = null;
+async function linkUser32(env: Record<string, unknown>): Promise<Record<string, unknown>> {
+  try {
+    if (!user32Bytes) { user32Bytes = await (await fetch('/cdrive/Windows/System32/user32.wasm', { cache: 'no-store' })).arrayBuffer(); console.info('[user32] DLL loaded from C:\\Windows\\System32\\user32.wasm'); }
+    const u32imports: Record<string, unknown> = {};
+    for (const f of USER32_FUNCS) u32imports['js_' + f] = env[f];                 // user32.wasm импортит js_<X>
+    const exp = (await WebAssembly.instantiate(user32Bytes, { env: stubEnv(u32imports) })).instance.exports;
+    const out = { ...env };
+    for (const f of USER32_FUNCS) if (typeof exp[f] === 'function') out[f] = exp[f];   // приложение зовёт эти функции ИЗ user32.wasm
+    return out;
+  } catch { return env; }   // нет/несовместим user32.wasm -> функции напрямую из JS (graceful)
+}
+
 /* консольный инструмент C:\Windows\System32\*.wasm (msbuild, cc): тонкий wasm, зовущий winweb_* в JS.
    Получает аргументы (winweb_args), cwd (winweb_cwd), id консоли (winweb_stdout); stdout (__write) -> эта консоль. */
 async function launchConsoleTool(bytes: Uint8Array, args: string, cwd: string, con: number): Promise<void> {
@@ -226,7 +242,7 @@ async function msbuildTool(args: string, cwd: string, con: number): Promise<void
 async function launchLccGui(mod: WebAssembly.Module, iconUrl?: string): Promise<void> {
   const { makeWin32Full } = await import('./cc/win32-full');
   const { env, setInstance } = makeWin32Full(wm, host, iconUrl);
-  const instance = await WebAssembly.instantiate(mod, { env: stubEnv(env) });
+  const instance = await WebAssembly.instantiate(mod, { env: stubEnv(await linkUser32(env)) });
   setInstance(instance);
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
 }
