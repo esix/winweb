@@ -6,7 +6,7 @@
  * .vcxproj читаем подмножеством: ProjectName, ConfigurationType, ClCompile, ResourceCompile.
  *   node scripts/build-cdrive.mjs [appName]
  */
-import { readFileSync, readdirSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, readdirSync, existsSync, mkdirSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join, basename } from 'path';
 import { execFileSync } from 'child_process';
@@ -21,6 +21,7 @@ function parseVcxproj(xml) {
   return {
     name: pick(/<ProjectName>([^<]+)<\/ProjectName>/),
     type: pick(/<ConfigurationType>([^<]+)<\/ConfigurationType>/) || 'Application',
+    subsystem: pick(/<SubSystem>([^<]+)<\/SubSystem>/) || 'Windows',     // Console -> C:\Windows\System32, иначе Program Files
     sources: [...xml.matchAll(/<ClCompile\s+Include="([^"]+)"/g)].map((m) => m[1].replace(/\\/g, '/')),
     rc: [...xml.matchAll(/<ResourceCompile\s+Include="([^"]+)"/g)].map((m) => m[1].replace(/\\/g, '/')),
   };
@@ -30,6 +31,7 @@ if (!existsSync(PROJECTS)) { console.error('no src/cdrive/Projects'); process.ex
 const only = process.argv[2];
 for (const dir of readdirSync(PROJECTS)) {
   const pdir = join(PROJECTS, dir);
+  if (!statSync(pdir).isDirectory()) continue;                 // в Projects/ есть и файлы-сэмплы (demo.c и т.п.)
   const vcx = readdirSync(pdir).find((f) => f.endsWith('.vcxproj'));
   if (!vcx) continue;
   const proj = parseVcxproj(readFileSync(join(pdir, vcx), 'utf8'));
@@ -41,10 +43,11 @@ for (const dir of readdirSync(PROJECTS)) {
     execFileSync('node', [join(ROOT, 'scripts', 'build-rc.mjs'), join(ROOT, rcRel), join(ROOT, resRel)], { stdio: 'pipe' });
     sources.push(resRel);
   }
-  const out = `public/cdrive/Program Files/${name}/${name}.wasm`;
+  const isConsole = /console/i.test(proj.subsystem);
+  const out = isConsole ? `public/cdrive/Windows/System32/${name}.wasm` : `public/cdrive/Program Files/${name}/${name}.wasm`;
   mkdirSync(join(ROOT, dirname(out)), { recursive: true });
   try {
     const { wasm } = buildApp(name, { sources, libc: true, out });
-    console.log(`${name}: ${wasm.length} bytes -> Program Files/${name}/${name}.wasm (valid: ${WebAssembly.validate(wasm)})`);
+    console.log(`${name}: ${wasm.length} bytes -> ${isConsole ? 'System32/' + name + '.wasm' : 'Program Files/' + name + '/' + name + '.wasm'} (valid: ${WebAssembly.validate(wasm)})`);
   } catch (e) { console.error(`${name}: ${e.message.split('\n').slice(0, 6).join('\n')}`); process.exit(1); }
 }

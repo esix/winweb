@@ -13,9 +13,8 @@
 
 extern int  winweb_vfs(int op, const char *path, char *buf, int max);   /* op: 0=dir, 1=type (РЕЗИДЕНТНЫЙ, синхронно) */
 extern void winweb_con_clear(int id);
-extern int  winweb_exec(const char *path);                              /* 1=запущена .wasm, 2=PE, 0=не найдена */
+extern int  winweb_exec(const char *path, const char *args, int con);   /* найти .wasm (cwd/System32), запустить; 2=PE, 0=не найдено */
 extern int  winweb_cc(const char *path, int con);                       /* компиляция C->wasm + запуск, вывод в con */
-extern int  winweb_build(const char *path, int con);                    /* msbuild: собрать .vcxproj-проект + запустить */
 
 static char g_cwd[300] = "C:\\";
 static char g_buf[1 << 16];
@@ -66,14 +65,10 @@ void process_line(void) {
     else if (!strcasecmp(line, "cls")) { winweb_con_clear(g_out); prompt(); return; }
     else if (!strcasecmp(line, "echo")) { w(g_out, arg); w(g_out, "\r\n"); }
     else if (!strcasecmp(line, "ver")) { w(g_out, "\r\nwinweb Version 1.0 (lcc-wasm)\r\n\r\n"); }
-    else if (!strcasecmp(line, "help")) { w(g_out, "DIR CD TYPE ECHO CLS VER CC MSBUILD HELP EXIT\r\n  cc file.c        compile+run one C file\r\n  msbuild <proj>   build a .vcxproj project (-> Program Files) and run it\r\n"); }
+    else if (!strcasecmp(line, "help")) { w(g_out, "DIR CD TYPE ECHO CLS VER CC HELP EXIT\r\n  cc file.c       compile+run one C file\r\n  <tool> [args]   run a .wasm from the dir or C:\\Windows\\System32  (e.g. msbuild Hello)\r\n"); }
     else if (!strcasecmp(line, "cc")) {
         if (!arg[0]) w(g_out, "usage: cc <file.c>\r\n");
         else { resolve(arg, p); winweb_cc(p, g_out); }
-    }
-    else if (!strcasecmp(line, "msbuild") || !strcasecmp(line, "build")) {
-        if (!arg[0]) w(g_out, "usage: msbuild <project>   (e.g. msbuild Hello, or a path to a .vcxproj folder)\r\n");
-        else { resolve(arg, p); winweb_build(p, g_out); }
     }
     else if (!strcasecmp(line, "dir")) { resolve(arg, p); vfs(0, p); w(g_out, g_buf); }
     else if (!strcasecmp(line, "type")) { resolve(arg, p); vfs(1, p); w(g_out, g_buf); w(g_out, "\r\n"); }
@@ -82,9 +77,9 @@ void process_line(void) {
         else if (!strcmp(arg, "..")) { char *s = strrchr(g_cwd, '\\'); if (s && s > g_cwd + 2) *s = 0; else strcpy(g_cwd, "C:\\"); }
         else { resolve(arg, p); strcpy(g_cwd, p); }
     }
-    else {                                                              /* не встроенная -> запустить как программу */
+    else {                                                              /* не встроенная -> искать .wasm в cwd / C:\Windows\System32 */
         resolve(line, p);
-        r = winweb_exec(p);
+        r = winweb_exec(p, arg, g_out);
         if (r == 2) w(g_out, "Cannot execute native PE (.exe) - no x86 emulation; only .wasm runs.\r\n");
         else if (r != 1) { w(g_out, "'"); w(g_out, line); w(g_out, "' is not recognized as a command or program.\r\n"); }
     }

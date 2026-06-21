@@ -35,7 +35,7 @@ function walk(absDir, relDir) {
 }
 walk(SRC, '');
 
-/* собранные приложения: public/cdrive/Program Files/<App>/*.wasm */
+/* собранные приложения (GUI): public/cdrive/Program Files/<App>/*.wasm */
 const PF = join(PUB, 'Program Files');
 if (existsSync(PF)) {
   entries.push({ path: 'C:\\Program Files', type: 'dir' });
@@ -46,6 +46,10 @@ if (existsSync(PF)) {
       entries.push({ path: `C:\\Program Files\\${app}\\${f}`, type: 'file', url: vurl(`Program Files/${app}/${f}`), exec: true });
   }
 }
+/* собранные инструменты (консольные): public/cdrive/Windows/System32/*.wasm */
+const S32 = join(PUB, 'Windows', 'System32');
+if (existsSync(S32)) for (const f of readdirSync(S32).sort()) if (f.endsWith('.wasm'))
+  entries.push({ path: `C:\\Windows\\System32\\${f}`, type: 'file', url: vurl(`Windows/System32/${f}`), exec: true });
 
 /* version: +1 только если набор entries изменился (сохраняет правки в VFS между сборками) */
 const out = join(PUB, 'manifest.json');

@@ -57,7 +57,7 @@ function vfsLookup(op: number, path: string, snap: Snapshot): string {
 export interface LccCmdHooks {
   launch: (path: string) => void;               // запуск .wasm-цели
   cc: (path: string, conId: number) => void;    // компиляция+запуск C (async, вывод в консоль)
-  build: (path: string, conId: number) => void; // msbuild: сборка .vcxproj-проекта + запуск
+  exec: (wasmPath: string, args: string, conId: number) => void;   // запуск найденного .wasm (cwd/System32) с аргументами
 }
 
 export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vfs, wasmBytes: BufferSource, hooks: LccCmdHooks): Promise<void> {
@@ -82,14 +82,16 @@ export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vf
     },
     winweb_con_clear: (id: number) => host.conClear(id),
     winweb_vfs: (op: number, pathPtr: number, bufPtr: number, max: number) => writeStr(bufPtr, vfsLookup(op, rd(pathPtr), snap), max),
-    winweb_exec: (pathPtr: number) => {
-      const path = rd(pathPtr);
-      for (const p of [path, `${path}.wasm`]) { const e = snap.all.get(p); if (e?.type === 'file' && p.toLowerCase().endsWith('.wasm')) { hooks.launch(p); return 1; } }
-      for (const p of [path, `${path}.exe`]) { const e = snap.all.get(p); if (e?.type === 'file' && p.toLowerCase().endsWith('.exe')) return 2; }
+    winweb_exec: (pathPtr: number, argsPtr: number, con: number) => {
+      const path = rd(pathPtr), args = rd(argsPtr), base = path.replace(/\\+$/, '').split('\\').pop() || path;
+      for (const p of [`${path}.wasm`, path, `C:\\Windows\\System32\\${base}.wasm`]) {   // cwd, затем System32 (PATH позже)
+        const e = snap.all.get(p);
+        if (e?.type === 'file' && p.toLowerCase().endsWith('.wasm')) { hooks.exec(p, args, con); return 1; }
+      }
+      for (const p of [`${path}.exe`, path]) { const e = snap.all.get(p); if (e?.type === 'file' && p.toLowerCase().endsWith('.exe')) return 2; }
       return 0;
     },
     winweb_cc: (pathPtr: number, con: number) => { hooks.cc(rd(pathPtr), con); return 0; },
-    winweb_build: (pathPtr: number, con: number) => { hooks.build(rd(pathPtr), con); return 0; },
   };
 
   const { instance } = await WebAssembly.instantiate(wasmBytes, { env: stubEnv(env) });

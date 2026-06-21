@@ -116,17 +116,8 @@ async function launchNotepad(e: Entry): Promise<void> {
 
 /* двойной клик по файлу: .wasm -> запуск из рантайма, иначе -> Блокнот */
 function openEntry(e: Entry): void {
-  if (e.name.toLowerCase().endsWith('.wasm')) {
-    void (async () => {
-      const bytes = await vfs.readFile(e.path);
-      if (!bytes) return;
-      const mod = await WebAssembly.compile(bytes as BufferSource);
-      if (WebAssembly.Module.exports(mod).some((x) => x.name === 'WinMain')) await launchLccGui(mod);   // lcc standalone GUI-приложение
-      else console.warn('openEntry: не lcc-GUI .wasm (нет экспорта WinMain):', e.name);
-    })();
-  } else {
-    void launchNotepad(e);
-  }
+  if (e.name.toLowerCase().endsWith('.wasm')) void execWasmFile(e.path, '', null);   // GUI -> окно; консольный -> новая консоль
+  else void launchNotepad(e);
 }
 
 /* статичный демо-модуль ресурсов (.ico/.bmp из .rc): свой gdi на кучу модуля */
@@ -142,19 +133,55 @@ async function launchCmd(): Promise<void> {
   await launchLccCmd(wm, host, vfs, bytes, {
     launch: (p) => { void launchTarget(p); },
     cc: (p, con) => (host as unknown as { ccStart: (path: string, c: number) => void }).ccStart(p, con),
-    build: (p, con) => { void msbuildFromCmd(p, con); },
+    exec: (wasmPath, args, con) => { void execWasmFile(wasmPath, args, con); },   // cmd нашёл .wasm (cwd/System32) -> запустить
   });
 }
 
-/* msbuild из cmd: вывод в консоль con; если в каталоге нет .vcxproj — пробуем C:\Projects\<name> */
-async function msbuildFromCmd(path: string, con: number): Promise<void> {
-  const log = (s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
-  let dir = path;
-  const ents = await vfs.readdir(dir).catch(() => [] as Entry[]);
-  if (!ents.some((e) => e.name.toLowerCase().endsWith('.vcxproj'))) {
-    const name = path.replace(/\\+$/, '').split('\\').pop();
-    if (name) dir = `C:\\Projects\\${name}`;
+/* запустить .wasm из VFS: GUI (экспорт WinMain) -> окно; консольный (экспорт main) -> в консоли con
+   (con == null -> открыть НОВУЮ консоль, напр. при двойном клике в Проводнике на консольный инструмент). */
+async function execWasmFile(wasmPath: string, args: string, con: number | null): Promise<void> {
+  const bytes = await vfs.readFile(wasmPath);
+  if (!bytes) return;
+  const mod = await WebAssembly.compile(bytes as BufferSource);
+  const ex = WebAssembly.Module.exports(mod);
+  if (ex.some((e) => e.name === 'WinMain')) { await launchLccGui(mod); return; }                 // оконное приложение
+  if (ex.some((e) => e.name === 'main')) {                                                        // консольный инструмент
+    const h = host as unknown as { conOpen: () => number; conTitle: (i: number, t: string) => void };
+    let conId = con;
+    if (conId == null) { conId = h.conOpen(); h.conTitle(conId, wasmPath.split('\\').pop()?.replace(/\.wasm$/i, '') ?? 'console'); }
+    await launchConsoleTool(bytes, args, conId);
   }
+}
+
+/* консольный инструмент C:\Windows\System32\*.wasm (msbuild и т.п.): тонкий wasm, вызывающий winweb_* в JS.
+   Получает аргументы (winweb_args) + id консоли (winweb_stdout), весь stdout (__write) идёт в эту консоль. */
+async function launchConsoleTool(bytes: Uint8Array, args: string, con: number): Promise<void> {
+  const cw = (s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
+  let mem: WebAssembly.Memory;
+  const u8 = () => new Uint8Array(mem.buffer);
+  const rdA = (p: number) => { const b = u8(); let s = ''; while (b[p]) s += String.fromCharCode(b[p++]); return s; };
+  const wrA = (p: number, s: string, max: number) => { const b = u8(); let i = 0; for (; i < s.length && i < max - 1; i++) b[p + i] = s.charCodeAt(i) & 255; b[p + i] = 0; return i; };
+  const env: Record<string, unknown> = {
+    winweb_args: (buf: number, max: number) => wrA(buf, args, max),
+    winweb_stdout: () => con,
+    winweb_msbuild: (argsPtr: number, c: number) => { void msbuildTool(rdA(argsPtr), c); return 0; },
+    __read: () => 0,
+    __write: (_fd: number, ptr: number, len: number) => { const b = new Uint8Array(mem.buffer, ptr, len); let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(b[i]); cw(s.replace(/\r?\n/g, '\r\n')); return len; },
+    __exit: () => 0,
+  };
+  const { instance } = await WebAssembly.instantiate(bytes as BufferSource, { env: stubEnv(env) });
+  mem = instance.exports.memory as WebAssembly.Memory;
+  (instance.exports.main as CallableFunction)();
+}
+
+/* логика msbuild (её зовёт msbuild.wasm через winweb_msbuild): собрать проект args, вывод в консоль con */
+async function msbuildTool(args: string, con: number): Promise<void> {
+  const log = (s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
+  const a = args.trim();
+  if (!a) { log('MSBuild: usage: msbuild <project>   (e.g. msbuild Hello)\r\n'); return; }
+  let dir = a;
+  const ents = await vfs.readdir(dir).catch(() => [] as Entry[]);
+  if (!ents.some((e) => e.name.toLowerCase().endsWith('.vcxproj'))) dir = `C:\\Projects\\${a.replace(/\\+$/, '').split('\\').pop()}`;
   await msbuildAndRun(dir, log);
 }
 
