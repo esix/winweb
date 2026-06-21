@@ -115,8 +115,8 @@ async function launchNotepadWasm(bytes: Uint8Array, path: string): Promise<void>
 }
 /* открыть файл в Блокноте (скачиваем notepad.wasm из System32) */
 async function launchNotepad(path: string): Promise<void> {
-  const bytes = new Uint8Array(await (await fetch(`/cdrive/Windows/System32/notepad.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer());
-  await launchNotepadWasm(bytes, path);
+  const bytes = await vfs.readFile('C:\\Windows\\System32\\notepad.wasm');   // из VFS (как Проводник)
+  if (bytes) await launchNotepadWasm(bytes, path);
 }
 
 /* двойной клик по файлу: .wasm -> запуск из рантайма, иначе -> Блокнот */
@@ -125,17 +125,17 @@ function openEntry(e: Entry): void {
   else void launchNotepad(e.path);
 }
 
-/* статичный демо-модуль ресурсов (.ico/.bmp из .rc): свой gdi на кучу модуля */
+/* ярлык IconsDemo: запускаем УСТАНОВЛЕННЫЙ файл из VFS (как Проводник) -> in-browser пересборки видны */
 async function launchIconsdemo(): Promise<void> {
-  const bytes = await (await fetch(`/cdrive/Program%20Files/IconsDemo/IconsDemo.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
-  await launchLccGui(await WebAssembly.compile(bytes), wasmIconUrl(new Uint8Array(bytes)));   // ресурсы .ico/.bmp — реальный LoadIcon/LoadBitmap
+  await execWasmFile('C:\\Program Files\\IconsDemo\\IconsDemo.wasm', '', 'C:\\', null);
 }
 
 /* запуск цели ярлыка: app:* -> встроенный, папка -> Проводник, иначе -> openEntry (.wasm/файл) */
 /* cmd, скомпилированный lcc-wasm (standalone, без emscripten) */
 async function launchCmd(): Promise<void> {
-  const bytes = await (await fetch(`/cdrive/Program%20Files/cmd/cmd.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
-  await launchLccCmd(wm, host, vfs, bytes, {
+  const bytes = await vfs.readFile('C:\\Program Files\\cmd\\cmd.wasm');   // из VFS (как Проводник) -> пересборки видны
+  if (!bytes) return;
+  await launchLccCmd(wm, host, vfs, bytes as BufferSource, {
     launch: (p) => { void launchTarget(p); },
     exec: (wasmPath, args, cwd, con) => { void execWasmFile(wasmPath, args, cwd, con); },   // cmd нашёл .wasm (cwd/System32) -> запустить
   });
@@ -286,8 +286,7 @@ async function msbuildBuild(dir: string, log: (s: string) => void): Promise<numb
   return { code, log: out };
 };
 async function launchMinesweeper(): Promise<void> {
-  const bytes = await (await fetch(`/cdrive/Program%20Files/Minesweeper/Minesweeper.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
-  await launchLccGui(await WebAssembly.compile(bytes), wasmIconUrl(new Uint8Array(bytes)));
+  await execWasmFile('C:\\Program Files\\Minesweeper\\Minesweeper.wasm', '', 'C:\\', null);   // из VFS (как Проводник)
 }
 
 async function launchTarget(target: string): Promise<void> {
