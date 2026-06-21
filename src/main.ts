@@ -130,7 +130,7 @@ async function launchCmdShell(bytes: Uint8Array): Promise<void> {
   await launchLccCmd(wm, host, vfs, bytes as BufferSource, {
     launch: (p) => { void launchTarget(p); },
     exec: (wasmPath, args, cwd, con) => { void execWasmFile(wasmPath, args, cwd, con); },   // cmd нашёл .wasm (cwd/System32) -> запустить
-  });
+  }, wasmIconUrl(bytes));   // встроенная иконка cmd -> заголовок + таскбар
 }
 async function launchCmd(): Promise<void> {
   await execWasmFile('C:\\Windows\\System32\\cmd.wasm', '', 'C:\\', null);   // execWasmFile распознает оболочку (экспорт process_line)
@@ -154,7 +154,7 @@ async function execWasmFile(wasmPath: string, args: string, cwd: string, con: nu
     const interactive = ex.some((e) => e.name === 'on_line');   // читает ввод -> своя консоль (иначе опрос столкнётся с cmd)
     const own = con == null || interactive;                     // мы открываем СВОЮ консоль -> exit() может её закрыть
     let conId = con;
-    if (own) { conId = h.conOpen(); h.conTitle(conId, wasmPath.split('\\').pop()?.replace(/\.wasm$/i, '') ?? 'console'); }
+    if (own) { conId = h.conOpen(); h.conTitle(conId, wasmPath.split('\\').pop()?.replace(/\.wasm$/i, '') ?? 'console'); wm.setIcon(conId, wasmIconUrl(bytes) ?? ''); }   // встроенная иконка -> заголовок + таскбар
     await launchConsoleTool(bytes, args, cwd, conId!, own);
   }
 }

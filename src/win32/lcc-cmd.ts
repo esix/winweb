@@ -68,8 +68,9 @@ export interface LccCmdHooks {
   exec: (wasmPath: string, args: string, cwd: string, conId: number) => void;   // запуск найденного .wasm (cwd/System32) с args + cwd
 }
 
-export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vfs, wasmBytes: BufferSource, hooks: LccCmdHooks): Promise<void> {
+export async function launchLccCmd(wm: WindowManager, host: WinwebHost, vfs: Vfs, wasmBytes: BufferSource, hooks: LccCmdHooks, iconUrl?: string): Promise<void> {
   const conId = host.conOpen();
+  if (iconUrl) wm.setIcon(conId, iconUrl);   // встроенная иконка -> заголовок окна + кнопка таскбара
   let mem!: WebAssembly.Memory;
   let snap: Snapshot = { dirs: new Map(), texts: new Map(), all: new Map(), lc: new Map() };
 
