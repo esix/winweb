@@ -12,6 +12,7 @@ import { stubEnv } from '../win32/wasm-env';
 import windowsH from '../../tools/lcc/include/windows.h?raw';
 import stringH from '../../tools/lcc/include/string.h?raw';
 import guiWindowsH from '../../tools/lcc/include-gui/windows.h?raw';
+import libcExtra from '../../tools/lcc/libc-extra.c?raw';
 
 const HEADERS = new Map<string, string>([['windows.h', windowsH], ['string.h', stringH]]);
 const GUI_HEADERS = new Map<string, string>([['windows.h', guiWindowsH]]);   // GUI: Win32-окна/GDI
@@ -26,6 +27,19 @@ for (const path of Object.keys(libcFiles)) {
   if (name === 'libc.c') LIBC = libcFiles[path];
   else if (name.endsWith('.h')) WASM_HEADERS.set(name, libcFiles[path]);
 }
+
+/* фасадные заголовки (winweb/include/*.h) + системные shim'ы — для сборки ПРОЕКТОВ в браузере
+ * (как build-cdrive под node: -I include + shim'ы + wasm-libc). */
+const facadeFiles = import.meta.glob('../../include/*.h', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const FACADE_HEADERS = new Map<string, string>();
+for (const path of Object.keys(facadeFiles)) FACADE_HEADERS.set(path.split('/').pop()!, facadeFiles[path]);
+const guard = (n: string, body: string) => `#ifndef _SHIM_${n}\n#define _SHIM_${n}\n${body}\n#endif\n`;
+const SHIMS = new Map<string, string>([
+  ['emscripten.h', guard('EMSC', '#define EMSCRIPTEN_KEEPALIVE\n#define emscripten_sleep(x)')],
+  ['stdint.h', guard('STDINT', 'typedef signed char int8_t; typedef unsigned char uint8_t; typedef short int16_t; typedef unsigned short uint16_t; typedef int int32_t; typedef unsigned int uint32_t; typedef long long int64_t; typedef unsigned long long uint64_t; typedef unsigned long uintptr_t; typedef long intptr_t;')],
+  ['stddef.h', guard('STDDEF', 'typedef unsigned long size_t; typedef long ptrdiff_t;\n#ifndef NULL\n#define NULL ((void*)0)\n#endif\ntypedef unsigned short wchar_t;')],
+  ['stdarg.h', guard('STDARG', 'typedef char *va_list;\n#define va_start(ap,last) ((ap)=(va_list)&(last)+8)\n#define va_arg(ap,t) (*(t*)(((ap)+=8)-8))\n#define va_end(ap) ((void)0)\n#define va_copy(d,s) ((d)=(s))')],
+]);
 
 let rccBytes: ArrayBuffer | null = null;
 async function loadRcc(): Promise<ArrayBuffer> {
@@ -86,6 +100,23 @@ export async function compileConsole(source: string): Promise<{ wasm: Uint8Array
 export async function compileGui(source: string): Promise<{ wasm: Uint8Array; stderr: string }> {
   let cppErr = '';
   const pp = preprocess(source, { includes: GUI_HEADERS, onError: (m) => { cppErr += m + '\n'; } });
+  if (cppErr) throw new Error(cppErr.trim());
+  const { wasm, stderr, code } = runRcc(await loadRcc(), pp);
+  if (code !== 0 || wasm.length === 0) throw new Error('rcc failed (code ' + code + '):\n' + (stderr || '(no output)'));
+  return { wasm, stderr };
+}
+
+/* собрать ПРОЕКТ (несколько .c + libc, фасадные заголовки) в браузере — как build-cdrive под node.
+ * sources: тексты .c в порядке ClCompile; localHeaders: локальные .h проекта (имя -> текст из VFS). */
+export async function compileProject(sources: string[], localHeaders?: Map<string, string>): Promise<{ wasm: Uint8Array; stderr: string }> {
+  const includes = new Map<string, string>();
+  for (const [k, v] of WASM_HEADERS) includes.set(k, v);     // string.h/stdio.h/stdlib.h/limits.h...
+  for (const [k, v] of SHIMS) includes.set(k, v);            // stdint/stddef/stdarg/emscripten (перекрывают)
+  for (const [k, v] of FACADE_HEADERS) includes.set(k, v);   // windows.h (фасад), windowsx.h, ...
+  if (localHeaders) for (const [k, v] of localHeaders) includes.set(k, v);   // game.h/graphics.h/...
+  const amalgam = LIBC + '\n' + libcExtra + '\n' + sources.join('\n');
+  let cppErr = '';
+  const pp = preprocess(amalgam, { includes, defines: { inline: '', __inline: '', __forceinline: '' }, onError: (m) => { cppErr += m + '\n'; } });
   if (cppErr) throw new Error(cppErr.trim());
   const { wasm, stderr, code } = runRcc(await loadRcc(), pp);
   if (code !== 0 || wasm.length === 0) throw new Error('rcc failed (code ' + code + '):\n' + (stderr || '(no output)'));

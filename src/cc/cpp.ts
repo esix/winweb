@@ -104,9 +104,14 @@ export function preprocess(src: string, opts: CppOpts = {}): string {
   const run = (text: string, depth: number): void => {
     if (depth > 64) { err('cpp: #include nesting too deep'); return; }
     const spliced = stripComments(text.replace(/\\\r?\n/g, ''));
+    /* накапливаем подряд идущие НЕ-директивные строки в блок и раскрываем вместе —
+       чтобы вызов функционального макроса, разбитый на несколько строк, собирался целиком */
+    let buf: string[] = [];
+    const flush = (): void => { if (buf.length) { out.push(expandLine(buf.join('\n'))); buf = []; } };
     for (const raw of spliced.split('\n')) {
       const t = raw.replace(/^[ \t]+/, '');
       if (t[0] === '#') {
+        flush();
         const body = t.slice(1).replace(/^[ \t]+/, '');
         const sp = body.search(/[ \t]/);
         const dir = sp < 0 ? body : body.slice(0, sp);
@@ -125,9 +130,10 @@ export function preprocess(src: string, opts: CppOpts = {}): string {
           default: break;   // pragma / line / unknown -> игнор
         }
       } else if (activeNow()) {
-        out.push(expandLine(raw));
+        buf.push(raw);
       }
     }
+    flush();
   };
 
   const defineMacro = (rest: string): void => {

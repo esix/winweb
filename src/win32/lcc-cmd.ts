@@ -57,6 +57,7 @@ function vfsLookup(op: number, path: string, snap: Snapshot): string {
 export interface LccCmdHooks {
   launch: (path: string) => void;               // запуск .wasm-цели
   cc: (path: string, conId: number) => void;    // компиляция+запуск C (async, вывод в консоль)
+  build: (path: string, conId: number) => void; // msbuild: сборка .vcxproj-проекта + запуск
 }
 
 export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vfs, wasmBytes: BufferSource, hooks: LccCmdHooks): Promise<void> {
@@ -88,6 +89,7 @@ export async function launchLccCmd(_wm: WindowManager, host: WinwebHost, vfs: Vf
       return 0;
     },
     winweb_cc: (pathPtr: number, con: number) => { hooks.cc(rd(pathPtr), con); return 0; },
+    winweb_build: (pathPtr: number, con: number) => { hooks.build(rd(pathPtr), con); return 0; },
   };
 
   const { instance } = await WebAssembly.instantiate(wasmBytes, { env: stubEnv(env) });

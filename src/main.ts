@@ -142,7 +142,20 @@ async function launchCmd(): Promise<void> {
   await launchLccCmd(wm, host, vfs, bytes, {
     launch: (p) => { void launchTarget(p); },
     cc: (p, con) => (host as unknown as { ccStart: (path: string, c: number) => void }).ccStart(p, con),
+    build: (p, con) => { void msbuildFromCmd(p, con); },
   });
+}
+
+/* msbuild из cmd: вывод в консоль con; если в каталоге нет .vcxproj — пробуем C:\Projects\<name> */
+async function msbuildFromCmd(path: string, con: number): Promise<void> {
+  const log = (s: string) => (host as unknown as { conWrite: (i: number, t: string) => void }).conWrite(con, s);
+  let dir = path;
+  const ents = await vfs.readdir(dir).catch(() => [] as Entry[]);
+  if (!ents.some((e) => e.name.toLowerCase().endsWith('.vcxproj'))) {
+    const name = path.replace(/\\+$/, '').split('\\').pop();
+    if (name) dir = `C:\\Projects\\${name}`;
+  }
+  await msbuildAndRun(dir, log);
 }
 
 /* запустить lcc-GUI-приложение (standalone-модуль, экспортирует WinMain) против полного Win32-фасада */
@@ -153,6 +166,21 @@ async function launchLccGui(mod: WebAssembly.Module): Promise<void> {
   setInstance(instance);
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
 }
+
+/* msbuild: собрать проект из VFS (cpp.ts+rcc.wasm) -> C:\Program Files\<App> и, если GUI, запустить */
+async function msbuildAndRun(dir: string, log: (s: string) => void): Promise<number> {
+  const { buildProject } = await import('./cc/msbuild');
+  const { code, wasm } = await buildProject(vfs, dir, log);
+  if (code === 0 && wasm) {
+    const mod = await WebAssembly.compile(wasm as BufferSource);
+    if (WebAssembly.Module.exports(mod).some((x) => x.name === 'WinMain')) await launchLccGui(mod);
+  }
+  return code;
+}
+(window as unknown as { __msbuild: (d: string) => Promise<unknown> }).__msbuild = async (d: string) => {
+  let out = ''; const code = await msbuildAndRun(d, (s) => { out += s; });
+  return { code, log: out };
+};
 async function launchMinesweeper(): Promise<void> {
   const bytes = await (await fetch(`/cdrive/Program%20Files/Minesweeper/Minesweeper.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
   await launchLccGui(await WebAssembly.compile(bytes));
