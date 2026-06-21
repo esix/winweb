@@ -174,8 +174,9 @@ const wasmIconUrl = (bytes: Uint8Array): string | undefined => executableIconUrl
 /* USER32/GDI32 как настоящие DLL: эти функции приложение зовёт ИЗ C:\Windows\System32\<dll>.wasm
    (их exports подставляются в env приложения), а .wasm форвардит их в JS-фасад (js_*). */
 const DLLS: { name: string; funcs: string[] }[] = [
-  { name: 'user32', funcs: ['RegisterClass', 'CreateWindowEx', 'ShowWindow', 'UpdateWindow', 'GetMessage', 'TranslateMessage', 'DispatchMessage', 'DefWindowProc', 'PostQuitMessage', 'InvalidateRect', 'GetClientRect', 'MessageBox', 'GetSystemMetrics', 'DestroyWindow'] },
+  { name: 'user32', funcs: ['RegisterClass', 'CreateWindowEx', 'ShowWindow', 'UpdateWindow', 'GetMessage', 'TranslateMessage', 'DispatchMessage', 'DefWindowProc', 'PostQuitMessage', 'InvalidateRect', 'GetClientRect', 'MessageBox', 'GetSystemMetrics', 'DestroyWindow', 'GetDC', 'ReleaseDC', 'BeginPaint', 'EndPaint', 'SetWindowText', 'GetWindowText', 'SetTimer', 'KillTimer', 'LoadIcon', 'LoadBitmap', 'LoadCursor', 'SetCursor', 'ShowCursor', 'DrawIcon', 'DrawEdge', 'CreateMenu', 'CreatePopupMenu', 'AppendMenu', 'SetMenu', 'CheckMenuItem', 'GetDlgItemInt', 'LoadString', 'ShellAbout'] },
   { name: 'gdi32', funcs: ['GetStockObject', 'CreateSolidBrush', 'FillRect', 'Rectangle', 'Ellipse', 'SetTextColor', 'TextOut', 'SetPixel', 'MoveToEx', 'LineTo', 'CreateCompatibleDC', 'CreateCompatibleBitmap', 'BitBlt', 'DeleteDC', 'DeleteObject', 'SelectObject', 'CreatePen', 'CreateFontW', 'Polygon', 'Arc', 'SetBkMode', 'SetBkColor', 'SetLayout', 'GetLayout', 'TextOutW', 'GetSysColorBrush', 'GetTextExtentPoint32W'] },
+  { name: 'kernel32', funcs: ['AllocConsole', 'GetStdHandle', 'GetTickCount64', 'ReadConsoleA', 'SetConsoleTitleA', 'WriteConsoleA'] },
 ];
 const dllBytes: Record<string, ArrayBuffer> = {};
 async function linkDll(env: Record<string, unknown>, dll: { name: string; funcs: string[] }): Promise<Record<string, unknown>> {

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectName>kernel32</ProjectName>
+    <!-- DLL: системные функции (консоль/время) -> C:\Windows\System32\kernel32.wasm -->
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <SystemTool>true</SystemTool>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="kernel32.c" />
+  </ItemGroup>
+</Project>
