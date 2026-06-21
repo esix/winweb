@@ -96,12 +96,12 @@ await vfs.seed('/cdrive/manifest.json');
 }
 
 /* настоящий Win32-Блокнот: читаем файл из VFS, текст через мост, запускаем notepad.wasm */
-async function launchNotepad(e: Entry): Promise<void> {
-  const path = e.path;
-  const text = (await vfs.readText(path)) ?? '';
-  const bytes = await (await fetch(`/cdrive/Program%20Files/Notepad/Notepad.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer();
+/* Блокнот (notepad.wasm): GUI-редактор. path — открываемый файл (пустой -> untitled).
+   bytes — уже скачанный/прочитанный notepad.wasm. Мосты host_* дают файл + сохранение в VFS. */
+async function launchNotepadWasm(bytes: Uint8Array, path: string): Promise<void> {
+  const text = path ? ((await vfs.readText(path)) ?? '') : '';
   const { makeWin32Full } = await import('./cc/win32-full');
-  const { env, io, setInstance } = makeWin32Full(wm, host, wasmIconUrl(new Uint8Array(bytes)));
+  const { env, io, setInstance } = makeWin32Full(wm, host, wasmIconUrl(bytes));
   Object.assign(env, {   // мосты winweb (host_*), читают/пишут память lcc-модуля + VFS
     host_launch_text: (buf: number, max: number) => io.wrA(buf, text, max),
     host_launch_path: (buf: number, max: number) => io.wrA(buf, path, max),
@@ -109,15 +109,20 @@ async function launchNotepad(e: Entry): Promise<void> {
     host_prompt: (titleP: number, defP: number, buf: number, max: number) => { const r = window.prompt(io.rdA(titleP), io.rdA(defP)); return r == null ? 0 : io.wrA(buf, r, max); },
     host_load: (edit: number, p: number) => { void (async () => { const t = (await vfs.readText(io.rdA(p))) ?? ''; wm.setWindowText(edit, t); })(); },
   });
-  const { instance } = await WebAssembly.instantiate(bytes, { env: stubEnv(env) });
+  const { instance } = await WebAssembly.instantiate(bytes as BufferSource, { env: stubEnv(env) });
   setInstance(instance);
   (instance.exports.WinMain as CallableFunction)(0, 0, 0, 1);
+}
+/* открыть файл в Блокноте (скачиваем notepad.wasm из System32) */
+async function launchNotepad(path: string): Promise<void> {
+  const bytes = new Uint8Array(await (await fetch(`/cdrive/Windows/System32/notepad.wasm?t=${Date.now()}`, { cache: 'no-store' })).arrayBuffer());
+  await launchNotepadWasm(bytes, path);
 }
 
 /* двойной клик по файлу: .wasm -> запуск из рантайма, иначе -> Блокнот */
 function openEntry(e: Entry): void {
   if (e.name.toLowerCase().endsWith('.wasm')) void execWasmFile(e.path, '', 'C:\\', null);   // GUI -> окно; консольный -> новая консоль
-  else void launchNotepad(e);
+  else void launchNotepad(e.path);
 }
 
 /* статичный демо-модуль ресурсов (.ico/.bmp из .rc): свой gdi на кучу модуля */
@@ -143,6 +148,10 @@ async function execWasmFile(wasmPath: string, args: string, cwd: string, con: nu
   if (!bytes) return;
   const mod = await WebAssembly.compile(bytes as BufferSource);
   const ex = WebAssembly.Module.exports(mod);
+  if (WebAssembly.Module.imports(mod).some((i) => i.name === 'host_launch_text')) {   // редактор (notepad): аргумент = открываемый файл
+    await launchNotepadWasm(bytes, args.trim() ? resolveCwd(args, cwd) : '');
+    return;
+  }
   if (ex.some((e) => e.name === 'WinMain')) { await launchLccGui(mod, wasmIconUrl(bytes)); return; }   // оконное приложение
   if (ex.some((e) => e.name === 'main')) {                                                        // консольный инструмент
     const h = host as unknown as { conOpen: () => number; conTitle: (i: number, t: string) => void };

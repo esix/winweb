@@ -1,5 +1,5 @@
 {
-  "version": 37,
+  "version": 38,
   "entries": [
     {
       "path": "C:",
@@ -210,7 +210,7 @@
     {
       "path": "C:\\Projects\\Notepad\\Notepad.vcxproj",
       "type": "file",
-      "text": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n  <PropertyGroup Label=\"Globals\">\n    <ProjectName>Notepad</ProjectName>\n    <ConfigurationType>Application</ConfigurationType>\n  </PropertyGroup>\n  <ItemGroup>\n    <ClCompile Include=\"notepad.c\" />\n  </ItemGroup>\n</Project>\n"
+      "text": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n  <PropertyGroup Label=\"Globals\">\n    <ProjectName>notepad</ProjectName>\n    <ConfigurationType>Application</ConfigurationType>\n    <!-- GUI-приложение (WinMain), но это системный инструмент -> в C:\\Windows\\System32 (как notepad.exe) -->\n    <SystemTool>true</SystemTool>\n  </PropertyGroup>\n  <ItemGroup>\n    <ClCompile Include=\"notepad.c\" />\n  </ItemGroup>\n</Project>\n"
     },
     {
       "path": "C:\\Projects\\Notepad\\app.ico",
@@ -409,16 +409,6 @@
       "exec": true
     },
     {
-      "path": "C:\\Program Files\\Notepad",
-      "type": "dir"
-    },
-    {
-      "path": "C:\\Program Files\\Notepad\\Notepad.wasm",
-      "type": "file",
-      "url": "/cdrive/Program%20Files/Notepad/Notepad.wasm",
-      "exec": true
-    },
-    {
       "path": "C:\\Program Files\\cmd",
       "type": "dir"
     },
@@ -438,6 +428,12 @@
       "path": "C:\\Windows\\System32\\msbuild.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/msbuild.wasm",
+      "exec": true
+    },
+    {
+      "path": "C:\\Windows\\System32\\notepad.wasm",
+      "type": "file",
+      "url": "/cdrive/Windows/System32/notepad.wasm",
       "exec": true
     }
   ]

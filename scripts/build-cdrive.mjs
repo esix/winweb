@@ -21,7 +21,8 @@ function parseVcxproj(xml) {
   return {
     name: pick(/<ProjectName>([^<]+)<\/ProjectName>/),
     type: pick(/<ConfigurationType>([^<]+)<\/ConfigurationType>/) || 'Application',
-    subsystem: pick(/<SubSystem>([^<]+)<\/SubSystem>/) || 'Windows',     // Console -> C:\Windows\System32, иначе Program Files
+    subsystem: pick(/<SubSystem>([^<]+)<\/SubSystem>/) || 'Windows',     // Console -> C:\Windows\System32
+    systemTool: pick(/<SystemTool>([^<]+)<\/SystemTool>/) || '',          // true -> System32 (даже для GUI, напр. notepad)
     sources: [...xml.matchAll(/<ClCompile\s+Include="([^"]+)"/g)].map((m) => m[1].replace(/\\/g, '/')),
     rc: [...xml.matchAll(/<ResourceCompile\s+Include="([^"]+)"/g)].map((m) => m[1].replace(/\\/g, '/')),
   };
@@ -43,7 +44,7 @@ for (const dir of readdirSync(PROJECTS)) {
     execFileSync('node', [join(ROOT, 'scripts', 'build-rc.mjs'), join(ROOT, rcRel), join(ROOT, resRel)], { stdio: 'pipe' });
     sources.push(resRel);
   }
-  const isConsole = /console/i.test(proj.subsystem);
+  const isConsole = /console/i.test(proj.subsystem) || /true/i.test(proj.systemTool);   // System32-инструмент (консольный или GUI)
   const out = isConsole ? `public/cdrive/Windows/System32/${name}.wasm` : `public/cdrive/Program Files/${name}/${name}.wasm`;
   mkdirSync(join(ROOT, dirname(out)), { recursive: true });
   try {
