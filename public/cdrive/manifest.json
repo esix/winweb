@@ -1,5 +1,5 @@
 {
-  "version": 46,
+  "version": 47,
   "entries": [
     {
       "path": "C:",
@@ -16,7 +16,7 @@
     {
       "path": "C:\\Projects\\Cmd\\Cmd.vcxproj",
       "type": "file",
-      "text": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n  <PropertyGroup Label=\"Globals\">\n    <ProjectName>cmd</ProjectName>\n    <ConfigurationType>Application</ConfigurationType>\n  </PropertyGroup>\n  <ItemGroup>\n    <ClCompile Include=\"cmd.c\" />\n  </ItemGroup>\n</Project>\n"
+      "text": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n  <PropertyGroup Label=\"Globals\">\n    <ProjectName>cmd</ProjectName>\n    <ConfigurationType>Application</ConfigurationType>\n    <!-- Оболочка -> C:\\Windows\\System32\\cmd.wasm (как настоящий cmd.exe) -->\n    <SubSystem>Console</SubSystem>\n  </PropertyGroup>\n  <ItemGroup>\n    <ClCompile Include=\"cmd.c\" />\n  </ItemGroup>\n</Project>\n"
     },
     {
       "path": "C:\\Projects\\Cmd\\app.ico",
@@ -369,7 +369,7 @@
     {
       "path": "C:\\Windows\\Desktop\\Command Prompt.lnk",
       "type": "file",
-      "text": "target=app:cmd\nicon=⬛"
+      "text": "target=C:\\Windows\\System32\\cmd.wasm\nicon=⬛"
     },
     {
       "path": "C:\\Windows\\Desktop\\Hello.lnk",
@@ -379,12 +379,12 @@
     {
       "path": "C:\\Windows\\Desktop\\Icons Demo.lnk",
       "type": "file",
-      "text": "target=app:iconsdemo\nicon=🖼️"
+      "text": "target=C:\\Program Files\\IconsDemo\\IconsDemo.wasm\nicon=🎨"
     },
     {
       "path": "C:\\Windows\\Desktop\\Minesweeper.lnk",
       "type": "file",
-      "text": "target=app:minesweeper\nicon=💣"
+      "text": "target=C:\\Program Files\\Minesweeper\\Minesweeper.wasm\nicon=💣"
     },
     {
       "path": "C:\\Windows\\Desktop\\My Computer.lnk",
@@ -407,7 +407,7 @@
     {
       "path": "C:\\Windows\\Start Menu\\Programs\\Command Prompt.lnk",
       "type": "file",
-      "text": "target=app:cmd\nicon=⬛"
+      "text": "target=C:\\Windows\\System32\\cmd.wasm\nicon=⬛"
     },
     {
       "path": "C:\\Windows\\Start Menu\\Programs\\Explorer.lnk",
@@ -422,12 +422,12 @@
     {
       "path": "C:\\Windows\\Start Menu\\Programs\\Icons Demo.lnk",
       "type": "file",
-      "text": "target=app:iconsdemo\nicon=🖼️"
+      "text": "target=C:\\Program Files\\IconsDemo\\IconsDemo.wasm\nicon=🎨"
     },
     {
       "path": "C:\\Windows\\Start Menu\\Programs\\Minesweeper.lnk",
       "type": "file",
-      "text": "target=app:minesweeper\nicon=🎮"
+      "text": "target=C:\\Program Files\\Minesweeper\\Minesweeper.wasm\nicon=💣"
     },
     {
       "path": "C:\\Windows\\Start Menu\\Programs\\Notepad.lnk",
@@ -481,22 +481,18 @@
       "v": "7b86d4b80b79"
     },
     {
-      "path": "C:\\Program Files\\cmd",
-      "type": "dir"
-    },
-    {
-      "path": "C:\\Program Files\\cmd\\cmd.wasm",
-      "type": "file",
-      "url": "/cdrive/Program%20Files/cmd/cmd.wasm",
-      "exec": true,
-      "v": "06f4e2920380"
-    },
-    {
       "path": "C:\\Windows\\System32\\cc.wasm",
       "type": "file",
       "url": "/cdrive/Windows/System32/cc.wasm",
       "exec": true,
       "v": "ce2f8203a42d"
+    },
+    {
+      "path": "C:\\Windows\\System32\\cmd.wasm",
+      "type": "file",
+      "url": "/cdrive/Windows/System32/cmd.wasm",
+      "exec": true,
+      "v": "06f4e2920380"
     },
     {
       "path": "C:\\Windows\\System32\\gdi32.wasm",

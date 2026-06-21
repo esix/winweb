@@ -3,6 +3,8 @@
   <PropertyGroup Label="Globals">
     <ProjectName>cmd</ProjectName>
     <ConfigurationType>Application</ConfigurationType>
+    <!-- Оболочка -> C:\Windows\System32\cmd.wasm (как настоящий cmd.exe) -->
+    <SubSystem>Console</SubSystem>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="cmd.c" />

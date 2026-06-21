@@ -125,20 +125,15 @@ function openEntry(e: Entry): void {
   else void launchNotepad(e.path);
 }
 
-/* ярлык IconsDemo: запускаем УСТАНОВЛЕННЫЙ файл из VFS (как Проводник) -> in-browser пересборки видны */
-async function launchIconsdemo(): Promise<void> {
-  await execWasmFile('C:\\Program Files\\IconsDemo\\IconsDemo.wasm', '', 'C:\\', null);
-}
-
-/* запуск цели ярлыка: app:* -> встроенный, папка -> Проводник, иначе -> openEntry (.wasm/файл) */
-/* cmd, скомпилированный lcc-wasm (standalone, без emscripten) */
-async function launchCmd(): Promise<void> {
-  const bytes = await vfs.readFile('C:\\Program Files\\cmd\\cmd.wasm');   // из VFS (как Проводник) -> пересборки видны
-  if (!bytes) return;
+/* оболочка cmd (lcc-wasm, standalone): свой рантайм launchLccCmd с хуками, а НЕ обычный запуск wasm */
+async function launchCmdShell(bytes: Uint8Array): Promise<void> {
   await launchLccCmd(wm, host, vfs, bytes as BufferSource, {
     launch: (p) => { void launchTarget(p); },
     exec: (wasmPath, args, cwd, con) => { void execWasmFile(wasmPath, args, cwd, con); },   // cmd нашёл .wasm (cwd/System32) -> запустить
   });
+}
+async function launchCmd(): Promise<void> {
+  await execWasmFile('C:\\Windows\\System32\\cmd.wasm', '', 'C:\\', null);   // execWasmFile распознает оболочку (экспорт process_line)
 }
 
 /* запустить .wasm из VFS: GUI (экспорт WinMain) -> окно; консольный (экспорт main) -> в консоли con
@@ -152,6 +147,7 @@ async function execWasmFile(wasmPath: string, args: string, cwd: string, con: nu
     await launchNotepadWasm(bytes, args.trim() ? resolveCwd(args, cwd) : '');
     return;
   }
+  if (ex.some((e) => e.name === 'process_line')) { await launchCmdShell(bytes); return; }   // оболочка cmd (свой рантайм с хуками)
   if (ex.some((e) => e.name === 'WinMain')) { await launchLccGui(mod, wasmIconUrl(bytes)); return; }   // оконное приложение
   if (ex.some((e) => e.name === 'main')) {                                                        // консольное приложение/инструмент
     const h = host as unknown as { conOpen: () => number; conTitle: (i: number, t: string) => void };
@@ -285,40 +281,23 @@ async function msbuildBuild(dir: string, log: (s: string) => void): Promise<numb
   let out = ''; const code = await msbuildBuild(d, (s) => { out += s; });
   return { code, log: out };
 };
-async function launchMinesweeper(): Promise<void> {
-  await execWasmFile('C:\\Program Files\\Minesweeper\\Minesweeper.wasm', '', 'C:\\', null);   // из VFS (как Проводник)
-}
 
 async function launchTarget(target: string): Promise<void> {
-  if (target.startsWith('app:')) {
-    if (target === 'app:cmd') void launchCmd();
-    else if (target === 'app:minesweeper') void launchMinesweeper();
-    else if (target === 'app:iconsdemo') void launchIconsdemo();
-    return;
-  }
   const st = await vfs.stat(target);
   if (st?.type === 'dir') { new Explorer(wm, vfs, openEntry).open(target); return; }
   const name = target.split('\\').pop() || target;
-  openEntry({ path: target, name, type: 'file', size: st?.size ?? 0 });
+  openEntry({ path: target, name, type: 'file', size: st?.size ?? 0 });   // .wasm -> execWasmFile (GUI/консоль/оболочка cmd распознаются по экспортам)
 }
 
-/* app:-ярлыки -> их .wasm (для иконки) */
-const APP_WASM: Record<string, string> = {
-  minesweeper: 'C:\\Program Files\\Minesweeper\\Minesweeper.wasm',
-  iconsdemo: 'C:\\Program Files\\IconsDemo\\IconsDemo.wasm',
-  cmd: 'C:\\Program Files\\cmd\\cmd.wasm',
-};
 /* иконка из самого исполняемого файла цели (для стола / Пуска / Проводника); null если её нет.
    Фетчим обслуживаемый файл (свежая сборка), а не возможно-устаревший VFS. */
 async function targetIconUrl(target: string): Promise<string | null> {
-  let path = target;
-  if (target.startsWith('app:')) { path = APP_WASM[target.slice(4)] ?? ''; if (!path) return null; }
-  const lower = path.toLowerCase();
+  const lower = target.toLowerCase();
   if (!lower.endsWith('.wasm') && !lower.endsWith('.exe')) return null;
-  const url = '/cdrive/' + path.replace(/^C:\\/, '').split('\\').map(encodeURIComponent).join('/');
+  const url = '/cdrive/' + target.replace(/^[A-Za-z]:\\/, '').split('\\').map(encodeURIComponent).join('/');
   try {
     const bytes = new Uint8Array(await (await fetch(url, { cache: 'no-store' })).arrayBuffer());
-    return executableIconUrl(bytes, path);
+    return executableIconUrl(bytes, target);
   } catch { return null; }
 }
 function setIconImg(host: HTMLElement, url: string, cls: string): void {
@@ -383,7 +362,7 @@ deskItems.forEach((sc, i) => addDesktopIcon(sc.icon, sc.name, 18, 16 + i * 84, s
 
 (window as unknown as { __launchLccCmd: () => void }).__launchLccCmd = () => { void launchCmd(); };
 
-(window as unknown as { __launchMinesweeper: () => void }).__launchMinesweeper = () => { void launchMinesweeper(); };
+(window as unknown as { __launchMinesweeper: () => void }).__launchMinesweeper = () => { void execWasmFile('C:\\Program Files\\Minesweeper\\Minesweeper.wasm', '', 'C:\\', null); };
 
 /* проверочный хелпер: компиляция настоящего C89 (с #include) В БРАУЗЕРЕ через cpp.ts + rcc.wasm */
 (window as unknown as { __lccCompile: (src: string) => Promise<unknown> }).__lccCompile = async (src: string) => {
